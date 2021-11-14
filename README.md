@@ -1,7 +1,7 @@
 # abusive-language-detection
 Detecting abusive language within tweets using the [OLID](https://sites.google.com/site/offensevalsharedtask/olid) and [SOLID](https://sites.google.com/site/offensevalsharedtask/solid) datasets.
 
-- Rowan Lavelle <rowan.lavelle@gmail.com>
+- Rowan Lavelle | <rowan.lavelle@gmail.com>
 - Radhe 
 
 # Requirements
