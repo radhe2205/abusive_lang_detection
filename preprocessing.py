@@ -65,7 +65,7 @@ class Preprocessor:
         word_to_idx['<UNK>'] = n
         return word_to_idx
 
-    def get_train_split_by_task(data, task, val_set=False):
+    def get_train_split_by_task(self, data, task, val_set=False):
         labels = data[task]
         tweets = data[~labels.isnull()]['tweet']
         labels = labels[~labels.isnull()]
@@ -80,7 +80,7 @@ class Preprocessor:
         
         return tweets.values, labels.values
 
-    def get_test_data_by_task(self, data, labels):
+    def get_test_spilt_by_task(self, data, labels):
         return data['tweet'].values, labels['label'].values
 
 
@@ -109,5 +109,8 @@ if __name__ == "__main__":
                               remove_non_alpha=True, 
                               remove_stop=False)
     
-    train_x, train_y = pp.get_train_data_by_task(data=train_data, task='subtask_a')
-    test_x, test_y = pp.get_test_data_by_task(data=test_data, labels=test_a_labels)
+    train_x, train_y = pp.get_train_split_by_task(data=train_data, task='subtask_a')
+    test_x, test_y = pp.get_test_spilt_by_task(data=test_data, labels=test_a_labels)
+
+    vocab = pp.gen_vocab(sentences=train_x)
+    word_to_idx = pp.gen_word_to_idx(vocab=vocab)
