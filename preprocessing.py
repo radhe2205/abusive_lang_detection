@@ -52,6 +52,19 @@ class Preprocessor:
         data['tweet'] = data['tweet'].apply(clean)
         return data
 
+    def gen_vocab(self, sentences):
+        vocab = set()
+        for sentence in sentences:
+            words = sentence.split()
+            vocab |= set(words)
+        return vocab
+
+    def gen_word_to_idx(self, vocab):
+        n = len(vocab)
+        word_to_idx = {word:i for i,word in enumerate(vocab)}
+        word_to_idx['<UNK>'] = n
+        return word_to_idx
+
     def get_train_split_by_task(data, task, val_set=False):
         labels = data[task]
         tweets = data[~labels.isnull()]['tweet']
