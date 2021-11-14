@@ -100,7 +100,7 @@ if __name__ == "__main__":
                                remove_non_alpha=True, 
                                remove_stop=False)
     
-    test_data = pp.clean_data(data=train_data,
+    test_data = pp.clean_data(data=test_a_data,
                               lower_case=True, 
                               remove_hastag=True, 
                               remove_user=True, 
