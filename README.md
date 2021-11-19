@@ -2,7 +2,7 @@
 Detecting abusive language within tweets using the [OLID](https://sites.google.com/site/offensevalsharedtask/olid) and [SOLID](https://sites.google.com/site/offensevalsharedtask/solid) datasets.
 
 - Rowan Lavelle | <rowan.lavelle@gmail.com>
-- Radhe 
+- Radheshyam Verma | <radhe2205@gmail.com>
 
 # Requirements
 
@@ -23,4 +23,9 @@ Then go ahead an install the requirements:
 ```
 python3.6 -m pip install --upgrade pip
 python3.6 -m pip install -r requirements.txt
+```
+
+Download Embeddings
+```
+sh download_embeddings.sh
 ```
