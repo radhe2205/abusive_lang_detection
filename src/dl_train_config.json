@@ -1,0 +1,4 @@
+{
+  "base_path": "",
+  "embedding_path": "data/glove822/glove.6B{dims}d.txt"
+}

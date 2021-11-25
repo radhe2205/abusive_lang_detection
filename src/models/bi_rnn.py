@@ -1,27 +1,47 @@
 import torch
 from torch import nn
 
-from src.utils import load_embeddings_from_path
+# model_arch = {
+#     "RNN_layers": [
+#     {"layer_type": "lstm", "in_dim": 50, "hidden_dim": 100, "bi_dir": True, "dropout": 0.5, "num_layers": 2}],
+#
+#     "Classification_Layers": [
+#         {"layer_type": "dropout", "val": 0.4},
+#         {"layer_type":"batch_norm1", "in_dim": 100},
+#         {"layer_type": "linear", "in_dim": 100, "out_dim": 1, "activation": "sigmoid"},
+#     ]
+# }
+# def get_lstm_layer(config):
+#     seq_layer = nn.LSTM
+#     if (config["layer_type"] == "lstm"):
+#         seq_layer = nn.LSTM
+#     elif (config["layer_type"] == "gru"):
+#         seq_layer = nn.GRU
+#
+#     return seq_layer(input_size=config["in_dim"], hidden_size = "hidden_dim", bidirectional=config["bi_dir"], dropout=config["dropout"])
+#
+# def get_linear_layer(config):
+#     fc = nn.Linear()
+#
+# def create_nn_layers(config):
+#
 
-
-class BiLSTMModel(nn.Module):
-    def __init__(self, embedding_dim, embedding_path, embedding_type = "glove",
-                 num_layers = 2, hidden_size = 100, out_dim = 1):
-        super(BiLSTMModel, self).__init__()
+class RNNModel(nn.Module):
+    def __init__(self, embeddings, in_dim, num_layers = 1, hidden_size = 100, out_dim = 1):
+        super(RNNModel, self).__init__()
         self.num_layers = num_layers
-        self.embedding_dim = embedding_dim
         self.hidden_size = hidden_size
         self.out_dim = out_dim
 
-        self.embeddings = load_embeddings_from_path(embedding_dim, embedding_type, embedding_path)
+        self.embeddings = embeddings
 
-        self.rnn = nn.LSTM(input_size=embedding_dim, hidden_size=hidden_size, batch_first=True, bidirectional=True, dropout=0.2)
+        self.rnn = nn.LSTM(input_size=in_dim, hidden_size=hidden_size, num_layers=num_layers, batch_first=True, bidirectional=True, dropout=0.5)
 
         self.linear_layers = nn.Sequential(
-            nn.Dropout(0.2),
             nn.BatchNorm1d(self.hidden_size * 2),
+            nn.Dropout(0.4),
             nn.Linear(self.hidden_size * 2, self.out_dim),
-            (nn.Sigmoid(), nn.Softmax())[out_dim > 2]
+            (nn.Sigmoid(), nn.Identity())[out_dim > 2]
         )
 
         # Weight Initialization
@@ -30,11 +50,12 @@ class BiLSTMModel(nn.Module):
                 torch.nn.init.xavier_normal_(layer.weight.data)
 
     # number of words in tweet are limited, will use padded fixed length sequence.
-    def forward(self, samples):
-        # TODO
-        # Use last cell bidirectional output of lstm
-        # Pass to linear layer
-        pass
+    def forward(self, samples, w_lens):
+        word_embs = self.embeddings.get_embeddings(samples, w_lens)
+        o, (h,c) = self.rnn(word_embs)
+        # o = o[:,-1,:]
+        o = torch.cat((o[:,-1,:self.hidden_size], o[:, 0, self.hidden_size:]), dim=-1)
+        return self.linear_layers(o)
 
     # TO be used to save/load the model with different parameter
     def get_model_name(self):

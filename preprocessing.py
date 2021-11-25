@@ -7,7 +7,34 @@ from sklearn.utils import shuffle
 class Preprocessor:
     def __init__(self):
         pass
-    
+
+    def get_train_data(self, data_path, task = "subtask_a"):
+        train_data = self.read_tsv(path=data_path)
+
+        train_data = self.clean_data(data=train_data,
+                                   lower_case=True,
+                                   remove_hastag=True,
+                                   remove_user=True,
+                                   remove_url=True,
+                                   remove_punc=True,
+                                   remove_non_alpha=True,
+                                   remove_stop=False)
+
+        return self.get_train_data_n_labels(train_data, task)
+
+    def get_test_data(self, data_path, label_path):
+        test_data = self.read_tsv(path=data_path)
+        test_labels = self.read_csv(path=label_path)
+        test_data = self.clean_data(data=test_data,
+                                     lower_case=True,
+                                     remove_hastag=True,
+                                     remove_user=True,
+                                     remove_url=True,
+                                     remove_punc=True,
+                                     remove_non_alpha=True,
+                                     remove_stop=False)
+        return test_data["tweet"].values, test_labels["label"].values
+
     def read_tsv(self, path):
         return pd.read_csv(path, sep='\t')
     
@@ -65,10 +92,14 @@ class Preprocessor:
         word_to_idx['<UNK>'] = n
         return word_to_idx
 
-    def get_train_split_by_task(self, data, task, val_set=False):
+    def get_train_data_n_labels(self, data, task):
         labels = data[task]
         tweets = data[~labels.isnull()]['tweet']
         labels = labels[~labels.isnull()]
+        return tweets, labels
+
+    def get_train_split_by_task(self, data, task, val_set=False):
+        tweets, labels = self.get_train_data_n_labels(data, task)
 
         if val_set:
             train_x, val_x, train_y, val_y = train_test_split(tweets.values,
