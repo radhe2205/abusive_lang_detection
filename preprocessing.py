@@ -367,27 +367,6 @@ def text_clean_unit_tests():
     #s = "@USER thissssssss is a test, URL That NNEEEEEEEEDS!!!! to be properly cleand. me+you=forever! &gt;&gt;&gt; THE8 worst 99 &lt;&lt; &amp; :) #loSER abc... i'm didn't know you'd be this's compliccated &*(#$)@#$"
     s = "@USER @USER @USER It's not my fault you supported gun control run running ran runs better"
     pp = Preprocessor()
-    # print(f'raw string: {s}')
-    # print('remove_mention_url')
-    # print(pp.remove_mention_url(s))
-    # print('remove_entities')
-    # print(pp.remove_entities(s))
-    # print('remove_hastags')
-    # print(pp.remove_hastags(s))
-    # print('lowercase')
-    # print(pp.lowercase(s))
-    # print('add_space_latin')
-    # print(pp.add_space_latin(s))
-    # print('apostrophe_handling')
-    # print(pp.apostrophe_handling(pp.lowercase(s)))
-    # print('remove_punc')
-    # print(pp.remove_punc(s))
-    # print('remove_numbers')
-    # print(pp.remove_numbers(s))
-    # print('remove_stop')
-    # print(pp.remove_stop(s))
-    # print('reduce_words')
-    # print(pp.reduce_words(s))
     
     sym_spell = SymSpell(max_dictionary_edit_distance=2, prefix_length=7)
     dictionary_path = pkg_resources.resource_filename(
