@@ -72,7 +72,7 @@ class Preprocessor:
         return text
 
     def remove_non_ascii(self, text):
-        text = text.encode('ascii', 'ignore')
+        text = text.encode('ascii', 'ignore').decode('utf-8') 
         return str(text)
 
     def add_space_latin(self, text):
@@ -364,29 +364,30 @@ def main():
 
 def text_clean_unit_tests():
 
-    s = "@USER thissssssss is a test, URL That NNEEEEEEEEDS!!!! to be properly cleand. me+you=forever! &gt;&gt;&gt; THE8 worst 99 &lt;&lt; &amp; :) #loSER abc... i'm didn't know you'd be this's compliccated &*(#$)@#$"
+    #s = "@USER thissssssss is a test, URL That NNEEEEEEEEDS!!!! to be properly cleand. me+you=forever! &gt;&gt;&gt; THE8 worst 99 &lt;&lt; &amp; :) #loSER abc... i'm didn't know you'd be this's compliccated &*(#$)@#$"
+    s = "@USER @USER @USER It's not my fault you supported gun control run running ran runs better"
     pp = Preprocessor()
-    print(f'raw string: {s}')
-    print('remove_mention_url')
-    print(pp.remove_mention_url(s))
-    print('remove_entities')
-    print(pp.remove_entities(s))
-    print('remove_hastags')
-    print(pp.remove_hastags(s))
-    print('lowercase')
-    print(pp.lowercase(s))
-    print('add_space_latin')
-    print(pp.add_space_latin(s))
-    print('apostrophe_handling')
-    print(pp.apostrophe_handling(pp.lowercase(s)))
-    print('remove_punc')
-    print(pp.remove_punc(s))
-    print('remove_numbers')
-    print(pp.remove_numbers(s))
-    print('remove_stop')
-    print(pp.remove_stop(s))
-    print('reduce_words')
-    print(pp.reduce_words(s))
+    # print(f'raw string: {s}')
+    # print('remove_mention_url')
+    # print(pp.remove_mention_url(s))
+    # print('remove_entities')
+    # print(pp.remove_entities(s))
+    # print('remove_hastags')
+    # print(pp.remove_hastags(s))
+    # print('lowercase')
+    # print(pp.lowercase(s))
+    # print('add_space_latin')
+    # print(pp.add_space_latin(s))
+    # print('apostrophe_handling')
+    # print(pp.apostrophe_handling(pp.lowercase(s)))
+    # print('remove_punc')
+    # print(pp.remove_punc(s))
+    # print('remove_numbers')
+    # print(pp.remove_numbers(s))
+    # print('remove_stop')
+    # print(pp.remove_stop(s))
+    # print('reduce_words')
+    # print(pp.reduce_words(s))
     
     sym_spell = SymSpell(max_dictionary_edit_distance=2, prefix_length=7)
     dictionary_path = pkg_resources.resource_filename(
@@ -395,25 +396,30 @@ def text_clean_unit_tests():
     sym_spell.load_dictionary(dictionary_path, term_index=0, count_index=1)
 
     lemmatizer = WordNetLemmatizer()
-
-    print('spell_correction')
-    print(pp.spell_correction(s,sym_spell))
-    print('stem_words')
-    print(pp.stem_words(pp.lowercase(s),lemmatizer))
-    print('\nall together')
     s = pp.remove_mention_url(s)
+    print(s)
     s = pp.remove_entities(s)
+    print(s)
     s = pp.remove_hastags(s)
+    print(s)
     s = pp.lowercase(s)
-    s = pp.remove_non_ascii(s)
+    print(s)
     s = pp.apostrophe_handling(s)
+    print(s)
+    s = pp.remove_non_ascii(s)
+    print(s)
     s = pp.remove_punc(s)
+    print(s)
     s = pp.remove_numbers(s)
+    print(s)
     s = pp.remove_stop(s)
+    print(s)
     s = pp.reduce_words(s)
+    print(s)
     s = pp.spell_correction(s,sym_spell)
+    print(s)
     s = pp.stem_words(s,lemmatizer)
     print(s)
 
 if __name__ == "__main__":
-    main()
+    text_clean_unit_tests()
