@@ -1,11 +1,13 @@
 import json
 
 import torch
+from sklearn.metrics import classification_report
 from torch import nn
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 
 from preprocessing import Preprocessor
+from src.models.attention_rnn import AttentionModel
 from src.models.bi_rnn import RNNModel
 from src.models.embedding import GloveEmbedding
 from src.tweet_dataset import TweetDataset
@@ -66,7 +68,8 @@ def check_val_accuracy(model, loader, loss_fn):
     total_correct = 0
     total_loss = 0
     model.eval()
-    fp = 0; tp = 0; fn = 0
+    all_pred = torch.zeros(0)
+    all_target = torch.zeros(0)
 
     with torch.no_grad():
         for X,Y,w_len in loader:
@@ -75,18 +78,18 @@ def check_val_accuracy(model, loader, loss_fn):
             total_loss += calculate_weighted_loss(Y_pred, Y, loss_fn).item()
             if len(Y_pred.shape) == 1:
                 pred = (Y_pred > 0.5)
+                all_pred = torch.cat((all_pred, pred), dim=0)
+                all_target = torch.cat((all_target, Y), dim=0)
                 total_correct += (Y == (Y_pred > 0.5)).sum().item()
-                tp += (Y[pred == 1] == 1).sum()
-                fp += (pred[Y == 0] == 1).sum()
-                fn += (pred[Y == 1] == 0).sum()
             else:
                 pred = Y_pred.argmax(dim = -1)
-                total_correct += (Y == Y_pred.argmax(dim=-1)).sum().item()
+                all_pred = torch.cat((all_pred, pred), dim=0)
+                all_target = torch.cat((all_target, Y), dim=0)
+                total_correct += (Y == pred).sum().item()
 
-    precision = tp / (fp + tp)
-    recall = tp / (tp + fn)
-    f1_score = 2 * precision * recall / (precision + recall)
-    print(f"precision: {precision}, recall: {recall}, f1 score: {f1_score}")
+    results = classification_report(y_true=all_target, y_pred=all_pred, output_dict=True, digits=4, zero_division = 1)
+
+    print(f'precision: {results["macro avg"]["precision"]}, recall: {results["macro avg"]["recall"]}, f1 score: {results["macro avg"]["f1-score"]}')
     return total_correct / loader.dataset.__len__(), total_loss / loader.dataset.__len__()
 
 def calculate_weighted_loss(pred, target, loss_fn):
@@ -94,7 +97,8 @@ def calculate_weighted_loss(pred, target, loss_fn):
         loss_1 = loss_fn(pred[target==1], target[target == 1])
         loss_0 = loss_fn(pred[target==0], target[target == 0])
         return loss_1 * 2 + loss_0
-
+    if type(loss_fn) == nn.CrossEntropyLoss:
+        return loss_fn(pred, target)
 
 def train_nn(train_options):
     if train_options["load_vocab"]:
@@ -104,7 +108,12 @@ def train_nn(train_options):
         embedding, wordtoidx = load_embeddings_n_words(train_options["train_data_path"], train_options["embedding_path"], embedding_dim = train_options["embedding_dim"])
         save_vocab(wordtoidx, train_options["vocab_path"])
 
-    model = RNNModel(embedding, train_options["embedding_dim"], out_dim = train_options["out_dim"])
+    print("Loading Complete.")
+
+    if train_options["model_type"] == "attention":
+        model = AttentionModel(embedding, train_options["embedding_dim"], out_dim=train_options["out_dim"])
+    else:
+        model = RNNModel(embedding, train_options["embedding_dim"], out_dim = train_options["out_dim"])
     model.to(device)
 
     if train_options["load_model"]:
@@ -157,21 +166,51 @@ train_options = {
     "embedding_path": "data/glove822/glove.6B.{dims}d.txt",
     "base_path": "",
     "train_model": True,
-    "load_model": True,
+    "load_model": False,
     "save_model": True,
-    "load_vocab": True,
+    "load_vocab": False,
     "vocab_path": "data/vocab.json",
     "model_path": "saved_models/birnn_300.model",
-    "train_data_path": "data/OLIDv1.0/olid-training-v1.0.tsv",
-    "test_tweet_path": "data/OLIDv1.0/testset-levela.tsv",
+    "train_data_path": "data/OLIDv1.0/olid-training-v1.0_clean.tsv",
+    "test_tweet_path": "data/OLIDv1.0/testset-levela_clean.tsv",
     "test_label_path": "data/OLIDv1.0/labels-levela.csv",
     "out_dim": 1,
     "sub_task": "subtask_a",
-    "batch_size": 128,
+    "batch_size": 32,
     "lr": 0.001,
-    "epochs": 100
+    "epochs": 100,
+    "model_type": "attention" # attention | rnn
 }
 
-train_options = change_path_to_absolute(train_options)
+# train_options["sub_task"] = "subtask_c"
+# train_options["test_tweet_path"] = "data/OLIDv1.0/testset-levelc_clean.tsv"
+# train_options["test_label_path"] = "data/OLIDv1.0/labels-levelc.csv"
+# train_options["model_path"] = "saved_models/birnn_300_taskc_att.model"
+# train_options["out_dim"] = 3
 
-train_nn(train_options)
+def train_taska(model_type = "rnn"): # model_types = rnn | attention
+    global train_options
+    train_options["model_path"] = "saved_models/birnn_300_taska.model"
+    train_options["model_type"] = model_type
+    train_options = change_path_to_absolute(train_options)
+    train_nn(train_options)
+
+def train_taskb(model_type = "rnn"): # model_types = rnn | attention
+    train_options["sub_task"] = "subtask_b"
+    train_options["test_tweet_path"] = "data/OLIDv1.0/testset-levelb_clean.tsv"
+    train_options["test_label_path"] = "data/OLIDv1.0/labels-levelb.csv"
+    train_options["model_path"] = "saved_models/birnn_300_taskb.model"
+    train_options["model_type"] = model_type
+    train_options["out_dim"] = 1
+    train_nn(train_options)
+
+def train_taskc(model_type = "rnn"): # model_types = rnn | attention
+    train_options["sub_task"] = "subtask_c"
+    train_options["test_tweet_path"] = "data/OLIDv1.0/testset-levelc_clean.tsv"
+    train_options["test_label_path"] = "data/OLIDv1.0/labels-levelc.csv"
+    train_options["model_path"] = "saved_models/birnn_300_taskc.model"
+    train_options["model_type"] = model_type
+    train_options["out_dim"] = 3
+    train_nn(train_options)
+
+train_taska()

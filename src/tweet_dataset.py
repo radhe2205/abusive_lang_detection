@@ -1,3 +1,6 @@
+import math
+
+import pandas
 import torch
 from torch import nn
 
@@ -6,7 +9,9 @@ class TweetDataset(nn.Module):
     # The word_to_idx is of the word2vec
     def __init__(self, tweets, labels, wordtoidx):
         super(TweetDataset, self).__init__()
-        self.max_len = 80
+        self.max_len = 70
+        if type(labels) == pandas.core.series.Series:
+            labels[labels.isnull()] = "NOT"
         label_idx = {label: i for i, label in enumerate(sorted(set(labels)))}
         self.tweets = torch.empty((len(tweets), 80)).long().fill_(-1)
         self.labels = torch.zeros(len(tweets))

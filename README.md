@@ -29,3 +29,16 @@ Download Embeddings
 ```
 sh download_embeddings.sh
 ```
+
+All data preprocessed using script preprocess_all_data.py
+
+```
+python3 src/preprocess_all_data.py
+```
+
+To Train model checkout "train_nn.py" file.
+
+NOTE: Run the train_nn.py file from the root directory.
+```
+python3 src/train_nn.py
+```

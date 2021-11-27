@@ -41,7 +41,7 @@ class RNNModel(nn.Module):
             nn.BatchNorm1d(self.hidden_size * 2),
             nn.Dropout(0.4),
             nn.Linear(self.hidden_size * 2, self.out_dim),
-            (nn.Sigmoid(), nn.Identity())[out_dim > 2]
+            (nn.Sigmoid(), nn.Identity())[out_dim >= 2]
         )
 
         # Weight Initialization
