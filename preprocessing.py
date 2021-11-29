@@ -21,13 +21,39 @@ class Preprocessor:
 
     def get_train_data(self, data_path, task = "subtask_a"):
         train_data = self.read_tsv(path=data_path)
-        train_data = self.clean_data(data=train_data)
+
+        train_data = self.clean_data(data=train_data,no_users_url=False,
+                   no_html_entities=False,
+                   no_hastags=False,
+                   all_lowercase=False,
+                   no_ascii=False,
+                   sep_latin=False,
+                   handle_apostrophe=False,
+                   no_punc=False,
+                   no_numbers=False,
+                   no_stop_words=False,
+                   reduce_all_words=False,
+                   fix_spelling=False,
+                   stem_all_words=False)
+
         return self.get_train_data_n_labels(train_data, task)
 
     def get_test_data(self, data_path, label_path):
         test_data = self.read_tsv(path=data_path)
         test_labels = self.read_csv(path=label_path)
-        test_data = self.clean_data(data=test_data)
+        test_data = self.clean_data(data=test_data,no_users_url=False,
+                   no_html_entities=False,
+                   no_hastags=False,
+                   all_lowercase=False,
+                   no_ascii=False,
+                   sep_latin=False,
+                   handle_apostrophe=False,
+                   no_punc=False,
+                   no_numbers=False,
+                   no_stop_words=False,
+                   reduce_all_words=False,
+                   fix_spelling=False,
+                   stem_all_words=False)
         return test_data["tweet"].values, test_labels["label"].values
 
     def read_tsv(self, path):

@@ -43,7 +43,7 @@ class GloveEmbedding(WordEmbedding):
         for i in range(idxes.shape[0]):
             if w_lens[i] == 0:
                 continue
-            idxes[i, torch.randint(0, w_lens[i].long().item(), (int(w_lens[i].item() / 10) * 2,))] = self.wordtoidx["<unk>"]
+            # idxes[i, torch.randint(0, w_lens[i].long().item(), (int(w_lens[i].item() / 10) * 2,))] = self.wordtoidx["<unk>"]
 
         fixed_idxes = idxes.clone()
         train_idxes = idxes.clone()
@@ -55,7 +55,7 @@ class GloveEmbedding(WordEmbedding):
         train_idxes = train_idxes - 400001
         train_idxes[train_idxes < 0] = self.trainable_embedding.padding_idx
 
-        return self.trainable_embedding(train_idxes) #+ self.fixed_embedding(fixed_idxes)
+        return self.fixed_embedding(fixed_idxes) + self.trainable_embedding(train_idxes)
 
     # form_word_idx_dict: used for when we do not want to train extra word embeddings and just want to utilize glove embeddings.
     def load_embeddings(self, embedding_path, wordtoidx, embedding_dim = 50):
