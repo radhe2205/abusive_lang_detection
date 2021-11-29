@@ -10,10 +10,8 @@ class TweetDataset(nn.Module):
     def __init__(self, tweets, labels, wordtoidx):
         super(TweetDataset, self).__init__()
         self.max_len = 70
-        if type(labels) == pandas.core.series.Series:
-            labels[labels.isnull()] = "NOT"
         label_idx = {label: i for i, label in enumerate(sorted(set(labels)))}
-        self.tweets = torch.empty((len(tweets), 80)).long().fill_(-1)
+        self.tweets = torch.empty((len(tweets), self.max_len)).long().fill_(-1)
         self.labels = torch.zeros(len(tweets))
         self.word_lens = torch.zeros(len(tweets))
         if len(label_idx.keys()) > 2:
