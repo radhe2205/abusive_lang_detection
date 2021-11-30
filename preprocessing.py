@@ -338,7 +338,7 @@ class Preprocessor:
         labels = data[task]
         tweets = data[~labels.isnull()]['tweet']
         labels = labels[~labels.isnull()]
-        return tweets, labels
+        return tweets.values, labels.values
 
     def get_train_split_by_task(self, data, task, val_set=False):
         tweets, labels = self.get_train_data_n_labels(data, task)

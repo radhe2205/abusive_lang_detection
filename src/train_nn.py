@@ -196,21 +196,25 @@ def train_taska(model_type = "rnn"): # model_types = rnn | attention
     train_nn(train_options)
 
 def train_taskb(model_type = "rnn"): # model_types = rnn | attention
+    global train_options
     train_options["sub_task"] = "subtask_b"
     train_options["test_tweet_path"] = "data/OLIDv1.0/testset-levelb_clean.tsv"
     train_options["test_label_path"] = "data/OLIDv1.0/labels-levelb.csv"
     train_options["model_path"] = "saved_models/birnn_300_taskb.model"
     train_options["model_type"] = model_type
     train_options["out_dim"] = 1
+    train_options = change_path_to_absolute(train_options)
     train_nn(train_options)
 
 def train_taskc(model_type = "rnn"): # model_types = rnn | attention
+    global train_options
     train_options["sub_task"] = "subtask_c"
     train_options["test_tweet_path"] = "data/OLIDv1.0/testset-levelc_clean.tsv"
     train_options["test_label_path"] = "data/OLIDv1.0/labels-levelc.csv"
     train_options["model_path"] = "saved_models/birnn_300_taskc.model"
     train_options["model_type"] = model_type
     train_options["out_dim"] = 3
+    train_options = change_path_to_absolute(train_options)
     train_nn(train_options)
 
-train_taska()
+train_taskb()
