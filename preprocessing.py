@@ -41,7 +41,9 @@ class Preprocessor:
     def get_test_data(self, data_path, label_path):
         test_data = self.read_tsv(path=data_path)
         test_labels = self.read_csv(path=label_path)
-        test_labels = test_labels[~test_data.isnull()]
+        is_nan = test_data.isnull()
+        row_has_nan = is_nan.any(axis=1)
+        test_labels = test_labels[~row_has_nan]
         test_data = test_data.dropna()
         test_data = self.clean_data(data=test_data,no_users_url=False,
                    no_html_entities=False,
