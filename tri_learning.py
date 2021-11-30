@@ -8,6 +8,7 @@ from sklearn.metrics import classification_report
 from torch import nn
 from torch.optim import Adam
 from torch.utils.data import DataLoader
+from torch.optim.lr_scheduler import ExponentialLR
 
 from preprocessing import Preprocessor
 from src.models.attention_rnn import AttentionModel
@@ -15,48 +16,30 @@ from src.models.bi_rnn import RNNModel
 from src.models.embedding import GloveEmbedding
 from src.tweet_dataset import TweetDataset
 from src.utils import change_path_to_absolute, save_model, load_model
+from collections import Counter
 
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-def get_train_dataloader(dataset_path, wordtoidx, batch_size, task = "subtask_a"):
-    pp = Preprocessor()
-    tweets, labels = pp.get_train_data(dataset_path, task)
-    dataset = TweetDataset(tweets, labels, wordtoidx)
+def get_train_dataloader(tweets, labels, wordtoidx, batch_size, task = "subtask_a"):
+    dataset = TweetDataset(tweets, labels, wordtoidx).cuda()
     return DataLoader(dataset = dataset, shuffle=True, batch_size = batch_size)
 
 def get_test_dataloader(tweet_path, label_path, wordtoidx, batch_size):
     pp = Preprocessor()
     tweets, labels = pp.get_test_data(tweet_path, label_path)
-    dataset = TweetDataset(tweets, labels, wordtoidx)
+    dataset = TweetDataset(tweets, labels, wordtoidx).cuda()
     return DataLoader(dataset = dataset, shuffle=False, batch_size = batch_size)
 
-def get_all_words_from_train(dataset_path):
+def get_all_words_from_train(tweets):
     pp = Preprocessor()
-    tweets, labels = pp.get_train_data(dataset_path)
-    word_count_dict = {}
-    for tweet in tweets:
-        for word in tweet.split():
-            if word not in word_count_dict:
-                word_count_dict[word] = 0
-            word_count_dict[word] += 1
-    wordtoidx = {}
-    total_words = 0
-    for word in word_count_dict:
-        if word_count_dict[word] == 1:
-            continue
-        wordtoidx[word] = total_words
-        total_words += 1
-    return wordtoidx
+    vocab = pp.gen_vocab(sentences=tweets)
+    word_to_idx = pp.gen_word_to_idx(vocab=vocab)
+    return word_to_idx
 
-# Combine all words and load embeddings
-def load_embeddings_n_words(dataset_path, embedding_path, embedding_type = "glove", embedding_dim = 50):
-    if embedding_type == "glove":
-        wordtoidx = get_all_words_from_train(dataset_path)
-        embedding = GloveEmbedding(embedding_dim, wordtoidx, embedding_path)
-        wordtoidx = embedding.wordtoidx
-        return embedding, wordtoidx
-    raise NotImplementedError(embedding_type + " not implemented")
+def load_embeddings_n_words(tweets, embedding_path, embedding_type = "glove", embedding_dim = 50):
+    wordtoidx = get_all_words_from_train(tweets)
+    embedding = GloveEmbedding(embedding_dim, wordtoidx, embedding_path)
+    wordtoidx = embedding.wordtoidx
+    return embedding, wordtoidx
 
 def save_vocab(vocab, vocab_path):
     with open(vocab_path, "w") as f:
@@ -68,157 +51,179 @@ def load_saved_vocab(vocab_path):
         vocab = json.loads(vocab)
     return vocab
 
-def check_val_accuracy(model, loader, loss_fn):
-    total_correct = 0
-    total_loss = 0
+def train(dataloader, model, loss_fn, optimizer):
+    size = len(dataloader.dataset)
+    model.train()
+    for batch, (x,y,w_len) in enumerate(dataloader):
+        pred = model(x.cuda(), w_len.cuda()).cuda()
+        pred = pred.squeeze()
+        loss = loss_fn(pred,y.cuda())
+
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        if batch % 100 == 0:
+            loss, current = loss.item(), batch*len(x)
+            print(f'loss: {loss:>0.7f} \t[{current}/{size}]')
+
+def validation(dataloader, model, loss_fn):
+    size = len(dataloader.dataset)
+    num_batches = len(dataloader)
     model.eval()
-    all_pred = torch.zeros(0)
-    all_target = torch.zeros(0)
-
+    test_loss, correct = 0,0
+    preds = torch.zeros(0).cuda()
+    targets = torch.zeros(0).cuda()
     with torch.no_grad():
-        for X,Y,w_len in loader:
-            Y_pred = model(X.to(device), w_len.to(device)).cpu()
-            Y_pred = Y_pred.squeeze()
-            total_loss += loss_fn(Y_pred, Y).item()
-            if len(Y_pred.shape) == 1:
-                pred = (Y_pred > 0.5)
-                all_pred = torch.cat((all_pred, pred), dim=0)
-                all_target = torch.cat((all_target, Y), dim=0)
-                total_correct += (Y == (Y_pred > 0.5)).sum().item()
-            else:
-                pred = Y_pred.argmax(dim = -1)
-                all_pred = torch.cat((all_pred, pred), dim=0)
-                all_target = torch.cat((all_target, Y), dim=0)
-                total_correct += (Y == pred).sum().item()
+        for x,y,w_len in dataloader:
+            pred = model(x.cuda(), w_len.cuda()).cuda()
+            pred = pred.squeeze()
+            test_loss += loss_fn(pred,y.cuda()).item()
+            correct += (torch.round(pred)==y.cuda()).type(torch.float).sum().item()
+            preds = torch.cat((preds,torch.round(pred)), dim=0)
+            targets = torch.cat((targets,y.cuda()), dim=0)
 
-    results = classification_report(y_true=all_target, y_pred=all_pred, output_dict=True, digits=4, zero_division = 1)
+    test_loss /= num_batches
+    correct /= size
 
-    print(f'precision: {results["macro avg"]["precision"]}, recall: {results["macro avg"]["recall"]}, f1 score: {results["macro avg"]["f1-score"]}')
-    return total_correct / loader.dataset.__len__(), total_loss / loader.dataset.__len__()
+    results = classification_report(y_true=targets.cpu(), y_pred=preds.cpu(), output_dict=True, digits=4)
+    print('-'*40)
+    print('testing')
+    print(f'precision: \t{results["macro avg"]["precision"]}')
+    print(f'recall: \t{results["macro avg"]["recall"]}')
+    print(f'F1-score: \t{results["macro avg"]["f1-score"]}')
+    print(f'validation error: \naccuracy {correct:>5f}, avg loss: {test_loss:>7f}')
+    print('-'*40)
+    return {'f1-score:'results["macro avg"]["f1-score"],'accuracy':correct}
 
-def calculate_weighted_loss(pred, target, loss_fn):
-    if type(loss_fn) == nn.BCELoss:
-        loss_1 = loss_fn(pred[target==1], target[target == 1])
-        loss_0 = loss_fn(pred[target==0], target[target == 0])
-        return loss_1 * 2 + loss_0
-    if type(loss_fn) == nn.CrossEntropyLoss:
-        return loss_fn(pred, target)
+def train_test_model(params,experiment):
+    pp = Preprocessor()
+    tweets, labels = pp.get_train_data(train_options["train_data_path"], 
+                                       sample=0.77,
+                                       seed=params['seed'])
+    embedding, wordtoidx = load_embeddings_n_words(tweets, 
+                                                   train_options["embedding_path"], 
+                                                   embedding_dim=train_options["embedding_dim"])
+    
+    model = params['model_class'](embeddings=embedding, 
+                                  in_dim=train_options["embedding_dim"],
+                                  num_layers=params['num_layers'],
+                                  hidden_size=params['hidden_size'], 
+                                  out_dim=1).cuda()
 
-def train_nn(train_options):
-    if train_options["load_vocab"]:
-        wordtoidx = load_saved_vocab(train_options["vocab_path"])
-        embedding = GloveEmbedding(train_options["embedding_dim"], wordtoidx, train_options["embedding_path"], False)
-    else:
-        embedding, wordtoidx = load_embeddings_n_words(train_options["train_data_path"], train_options["embedding_path"], embedding_dim = train_options["embedding_dim"])
-        save_vocab(wordtoidx, train_options["vocab_path"])
-
-    print("Loading Complete.")
-
-    if train_options["model_type"] == "attention":
-        model = AttentionModel(embedding, train_options["embedding_dim"], out_dim=train_options["out_dim"])
-    else:
-        model = RNNModel(embedding, train_options["embedding_dim"], out_dim = train_options["out_dim"])
-    model.to(device)
-
-    if train_options["load_model"]:
-        load_model(model, train_options["model_path"])
-
-    if not train_options["train_model"]:
-        return model
-
-    train_loader = get_train_dataloader(train_options["train_data_path"], wordtoidx, train_options["batch_size"], train_options["sub_task"])
-    test_loader = get_test_dataloader(train_options["test_tweet_path"], train_options["test_label_path"], wordtoidx, train_options["batch_size"])
-
+    train_loader = get_train_dataloader(tweets,labels, 
+                                        wordtoidx, 
+                                        train_options["batch_size"], 
+                                        train_options["sub_task"])
+    test_loader = get_test_dataloader(train_options["test_tweet_path"],
+                                      train_options["test_label_path"], 
+                                      wordtoidx, 
+                                      train_options["batch_size"])
+    
     optimizer = Adam(model.parameters(), lr=train_options["lr"])
+    loss_fn = nn.BCELoss(reduction='sum')
+    sched = ExponentialLR(optimizer, gamma=0.99)
+    
+    for t in range(train_options['epochs']):
+        print(f'epoch {t}')
+        print('-'*40)
+        train(train_loader, model, loss_fn, optimizer)
+        results = validation(test_loader, model, loss_fn)
+        sched.step()    
+        print()
+    
+    save_model(model, params['path'][experiment])
+    return results
+    
+if __name__ == "__main__":
+    train_options = {
+        "embedding_dim": 300,
+        "embedding_path": "data/glove822/glove.6B.300d.txt",
+        "train_data_path": "data/OLIDv1.0/olid-training-v1.0_clean.tsv",
+        "test_tweet_path": "data/OLIDv1.0/testset-levela_clean.tsv",
+        "test_label_path": "data/OLIDv1.0/labels-levela.csv",
+        "sub_task": "subtask_a",
+        "batch_size": 32,
+        "lr": 0.001,
+        "epochs": 100,
+        "model_type": "rnn" # attention | rnn
+    }   
 
-    if train_options["out_dim"] > 1:
-        loss_fn = nn.CrossEntropyLoss()
-    else:
-        loss_fn = nn.BCELoss()
+    
+    # train and test all the models
+    models = [
+        {   
+            'model_class':RNNModel,
+            'num_layers':1,
+            'hidden_size':128,
+            'path':{
+                'olid':'saved_models/model_1_olid.model',
+                'solid-pred':'saved_models/model_1_solid_pred.model',
+                'solid-acc':'saved_models/model_1_solid_acc.model'
+            },
+            'seed':1,
+            'results':{
+                'olid':None,
+                'solid-pred':None,
+                'solid-acc':None
+            }
+        },
+        {
+            'model_class':RNNModel,
+            'num_layers':1,
+            'hidden_size':128,
+            'path':{
+                'olid':'saved_models/model_2_olid.model',
+                'solid-pred':'saved_models/model_2_solid_pred.model',
+                'solid-acc':'saved_models/model_2_solid_acc.model'
+            },
+            'seed':2,
+            'results':{
+                'olid':None,
+                'solid-pred':None,
+                'solid-acc':None
+            }
+        },
+        {
+            'model_class':RNNModel,
+            'num_layers':1,
+            'hidden_size':128,
+            'path':{
+                'olid':'saved_models/model_3_olid.model',
+                'solid-pred':'saved_models/model_3_solid_pred.model',
+                'solid-acc':'saved_models/model_3_solid_acc.model'
+            },
+            'seed':3,
+            'results':{
+                'olid':None,
+                'solid-pred':None,
+                'solid-acc':None
+            }
+        }
+    ]
 
-    max_acc, temp = check_val_accuracy(model, test_loader, loss_fn)
+    for i,model_params in enumerate(models):
+        print('='*40)
+        print(f'model {i+1}')
+        model_params['results']['olid'] = train_test_model(params=model_params,experiment='olid')
+        print('='*40)
+        print()
 
-    for epoch_num in range(1, train_options["epochs"] + 1):
-        print(f'Epoch: {epoch_num}')
-        model.train()
-        total_correct = 0
-        total_loss = 0
-        total_items = train_loader.dataset.__len__()
-        for X, Y, w_len in train_loader:
-            Y_pred = model(X.to(device), w_len.to(device)).cpu()
-            Y_pred = Y_pred.squeeze()
-            loss = loss_fn(Y_pred, Y)
-            if len(Y_pred.shape) == 1:
-                total_correct += (Y == (Y_pred>0.5)).sum().item()
-            else:
-                total_correct += (Y==Y_pred.argmax(dim = -1)).sum().item()
-            total_loss+= loss.item()
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+    print('*'*40)
+    print()
 
-        test_acc, test_loss = check_val_accuracy(model, test_loader, loss_fn)
-        print(f"Test Accuracy {test_acc}, test loss {test_loss}")
-        print(f"train accuracy: {total_correct / total_items}, total loss: {total_loss / total_items}")
-        if max_acc <= test_acc:
-            save_model(model, train_options["model_path"])
-            max_acc = test_acc
+    # test each model on SOLID
 
-train_options = {
-    "embedding_dim": 300,
-    "embedding_type": "glove",
-    "embedding_path": "data/glove822/glove.6B.{dims}d.txt",
-    "base_path": "",
-    "train_model": True,
-    "load_model": False,
-    "save_model": True,
-    "load_vocab": False,
-    "vocab_path": "data/vocab.json",
-    "model_path": "saved_models/birnn_300.model",
-    "train_data_path": "data/OLIDv1.0/olid-training-v1.0_clean.tsv",
-    "test_tweet_path": "data/OLIDv1.0/testset-levela_clean.tsv",
-    "test_label_path": "data/OLIDv1.0/labels-levela.csv",
-    "out_dim": 1,
-    "sub_task": "subtask_a",
-    "batch_size": 32,
-    "lr": 0.001,
-    "epochs": 100,
-    "model_type": "rnn" # attention | rnn
-}
+    # read in random sample of n SOLID tweets and drop labels
 
-# train_options["sub_task"] = "subtask_c"
-# train_options["test_tweet_path"] = "data/OLIDv1.0/testset-levelc_clean.tsv"
-# train_options["test_label_path"] = "data/OLIDv1.0/labels-levelc.csv"
-# train_options["model_path"] = "saved_models/birnn_300_taskc_att.model"
-# train_options["out_dim"] = 3
+    # experiment A
+    # add flagged missclasifications to data each cloned data set
+    
+    # experiment B
+    # add same number of samples but use the training label
 
-def train_taska(model_type = "rnn"): # model_types = rnn | attention
-    global train_options
-    train_options["model_path"] = "saved_models/birnn_300_taska.model"
-    train_options["model_type"] = model_type
-    train_options = change_path_to_absolute(train_options)
-    train_nn(train_options)
+    # re train all models using newly added points (both experiments)
 
-def train_taskb(model_type = "rnn"): # model_types = rnn | attention
-    global train_options
-    train_options["sub_task"] = "subtask_b"
-    train_options["test_tweet_path"] = "data/OLIDv1.0/testset-levelb_clean.tsv"
-    train_options["test_label_path"] = "data/OLIDv1.0/labels-levelb.csv"
-    train_options["model_path"] = "saved_models/birnn_300_taskb.model"
-    train_options["model_type"] = model_type
-    train_options["out_dim"] = 1
-    train_options = change_path_to_absolute(train_options)
-    train_nn(train_options)
+    # test on OLID data set again (individually and as ensemble) (both experiments)
 
-def train_taskc(model_type = "rnn"): # model_types = rnn | attention
-    global train_options
-    train_options["sub_task"] = "subtask_c"
-    train_options["test_tweet_path"] = "data/OLIDv1.0/testset-levelc_clean.tsv"
-    train_options["test_label_path"] = "data/OLIDv1.0/labels-levelc.csv"
-    train_options["model_path"] = "saved_models/birnn_300_taskc.model"
-    train_options["model_type"] = model_type
-    train_options["out_dim"] = 3
-    train_options = change_path_to_absolute(train_options)
-    train_nn(train_options)
-
-train_taska()
+    # test on SOLID data set again (individually and as ensemble) (both experiments)
