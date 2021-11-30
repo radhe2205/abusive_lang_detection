@@ -10,9 +10,9 @@ def clean_all_files():
     files = ["data/OLIDv1.0/testset-levela.tsv", "data/OLIDv1.0/testset-levelb.tsv",
              "data/OLIDv1.0/testset-levelc.tsv", "data/OLIDv1.0/olid-training-v1.0.tsv"]
 
-    for file in files[:-1]:
+    for file in files:
         data = pd.read_csv(file, sep='\t')
-        new_path = ".".join(file.split(".")[:-1]) + "_clean." + file.split(".")[-1]
+        new_path = ".".join(file.split(".")[:-1]) + "_clean1." + file.split(".")[-1]
         save_cleaned_tweets(data, new_path)
         print(f"Cleaned: {file}")
 

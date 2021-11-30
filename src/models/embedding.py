@@ -55,7 +55,7 @@ class GloveEmbedding(WordEmbedding):
         train_idxes = train_idxes - 400001
         train_idxes[train_idxes < 0] = self.trainable_embedding.padding_idx
 
-        return self.fixed_embedding(fixed_idxes) + self.trainable_embedding(train_idxes)
+        return self.fixed_embedding(fixed_idxes) #+ self.trainable_embedding(train_idxes)
 
     # form_word_idx_dict: used for when we do not want to train extra word embeddings and just want to utilize glove embeddings.
     def load_embeddings(self, embedding_path, wordtoidx, embedding_dim = 50):

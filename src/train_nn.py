@@ -96,7 +96,7 @@ def calculate_weighted_loss(pred, target, loss_fn):
     if type(loss_fn) == nn.BCELoss:
         loss_1 = loss_fn(pred[target==1], target[target == 1])
         loss_0 = loss_fn(pred[target==0], target[target == 0])
-        return loss_1 * 2 + loss_0
+        return loss_1 + loss_0
     if type(loss_fn) == nn.CrossEntropyLoss:
         return loss_fn(pred, target)
 
