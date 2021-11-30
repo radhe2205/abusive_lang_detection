@@ -25,11 +25,12 @@ python3.6 -m pip install --upgrade pip
 python3.6 -m pip install -r requirements.txt
 ```
 
-Download Embeddings
+# Download Embeddings
 ```
 sh download_embeddings.sh
 ```
 
+# Running Code
 All data preprocessed using script preprocess_all_data.py
 
 ```
