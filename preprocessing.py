@@ -14,6 +14,7 @@ import string
 from nltk.stem import WordNetLemmatizer
 import pkg_resources
 from symspellpy.symspellpy import SymSpell
+from collections import Counter
 
 class Preprocessor:
     def __init__(self):
@@ -21,7 +22,7 @@ class Preprocessor:
 
     def get_train_data(self, data_path, task = "subtask_a"):
         train_data = self.read_tsv(path=data_path)
-        train_data = train_data.dropna()
+        train_data = train_data[train_data['tweet'].notna()]
         train_data = self.clean_data(data=train_data,no_users_url=False,
                    no_html_entities=False,
                    no_hastags=False,
@@ -422,4 +423,8 @@ def text_clean_unit_tests():
     print(s)
 
 if __name__ == "__main__":
-    text_clean_unit_tests()
+    pp = Preprocessor()
+    dataset_path = 'data/OLIDv1.0/olid-training-v1.0_clean.tsv'
+    tweets, labels = pp.get_train_data(dataset_path, 'subtask_a')
+    _,_ = pp.get_test_data('data/OLIDv1.0/testset-levela_clean.tsv',
+                            'data/OLIDv1.0/labels-levela.csv')
