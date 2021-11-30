@@ -63,10 +63,6 @@ def train(dataloader, model, loss_fn, optimizer):
         loss.backward()
         optimizer.step()
 
-        if batch % 100 == 0:
-            loss, current = loss.item(), batch*len(x)
-            print(f'loss: {loss:>0.7f} \t[{current}/{size}]')
-
 def validation(dataloader, model, loss_fn):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
@@ -94,7 +90,8 @@ def validation(dataloader, model, loss_fn):
     print(f'F1-score: \t{results["macro avg"]["f1-score"]}')
     print(f'validation error: \naccuracy {correct:>5f}, avg loss: {test_loss:>7f}')
     print('-'*40)
-    return {'f1-score:'results["macro avg"]["f1-score"],'accuracy':correct}
+    return {'f1-score:':results["macro avg"]["f1-score"],
+            'accuracy':correct}
 
 def train_test_model(params,experiment):
     pp = Preprocessor()
@@ -211,6 +208,7 @@ if __name__ == "__main__":
 
     print('*'*40)
     print()
+    print(models)
 
     # test each model on SOLID
 
