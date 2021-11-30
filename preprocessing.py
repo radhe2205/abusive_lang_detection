@@ -21,7 +21,7 @@ class Preprocessor:
 
     def get_train_data(self, data_path, task = "subtask_a"):
         train_data = self.read_tsv(path=data_path)
-
+        train_data = train_data.dropna()
         train_data = self.clean_data(data=train_data,no_users_url=False,
                    no_html_entities=False,
                    no_hastags=False,
@@ -41,6 +41,8 @@ class Preprocessor:
     def get_test_data(self, data_path, label_path):
         test_data = self.read_tsv(path=data_path)
         test_labels = self.read_csv(path=label_path)
+        test_labels = test_labels[~test_data.isnull()]
+        test_data = test_data.dropna()
         test_data = self.clean_data(data=test_data,no_users_url=False,
                    no_html_entities=False,
                    no_hastags=False,
@@ -224,9 +226,8 @@ class Preprocessor:
         text = re.sub("\d+", '', text)
         return text
 
-    def remove_stop(self, text):
+    def remove_stop(self, text, stop):
         text = text.split()
-        stop = set(nltk.corpus.stopwords.words('english'))
         text = [w for w in text if w not in stop]
         text = ' '.join(text)
         return text
@@ -249,14 +250,20 @@ class Preprocessor:
                     continue
             return s
 
+        if len(text) == 0:
+            return text
         text = reduced_word(w=text)
         return text    
 
     def spell_correction(self, text, sym_spell):
+        if len(text) == 0:
+            return text
         text = sym_spell.word_segmentation(text)
         return text.corrected_string
 
     def stem_words(self, text, lemmatizer):
+        if len(text) == 0:
+            return text
         for word in text.split():
             text = text.replace(word, lemmatizer.lemmatize(word))
         return text
@@ -297,14 +304,14 @@ class Preprocessor:
             if no_numbers:
                 text = self.remove_numbers(text=text)
             if no_stop_words:
-                text = self.remove_stop(text=text)
+                text = self.remove_stop(text=text, stop=stop)
             if reduce_all_words:
                 text = self.reduce_words(text=text)
             if fix_spelling:
                 text = self.spell_correction(text=text, sym_spell=sym_spell)
             if stem_all_words:
                 text = self.stem_words(text=text, lemmatizer=lemmatizer)
-
+            
             text = text.split()
             text = [w for w in text if w != '']
             text = ' '.join(text)
@@ -317,7 +324,7 @@ class Preprocessor:
         sym_spell.load_dictionary(dictionary_path, term_index=0, count_index=1)
 
         lemmatizer = WordNetLemmatizer()
-
+        stop = set(nltk.corpus.stopwords.words('english'))
         data['tweet'] = data['tweet'].apply(clean)
         return data
 
@@ -385,6 +392,8 @@ def text_clean_unit_tests():
     sym_spell.load_dictionary(dictionary_path, term_index=0, count_index=1)
 
     lemmatizer = WordNetLemmatizer()
+
+    stop = set(nltk.corpus.stopwords.words('english'))
     s = pp.remove_mention_url(s)
     print(s)
     s = pp.remove_entities(s)
@@ -401,7 +410,7 @@ def text_clean_unit_tests():
     print(s)
     s = pp.remove_numbers(s)
     print(s)
-    s = pp.remove_stop(s)
+    s = pp.remove_stop(s,stop)
     print(s)
     s = pp.reduce_words(s)
     print(s)
