@@ -184,7 +184,57 @@ def test_model(params,experiment,test_x,test_y):
 
     results, preds = test(test_loader, model)
     return results, preds
+
+def test_ensemble(models,experiment):
+    pp = Preprocessor()
+    SOLID_test_tweets, SOLID_test_labels = load_solid_test(datapath='data/SOLID/test_a_tweets_clean.tsv',
+                                                           labelpath='data/SOLID/test_a_labels.csv')
+    OLID_test_tweets, OLID_test_labels = pp.get_test_data(train_options['test_tweet_path'],
+                                                          train_options['test_label_path'])
+    vote_map = {
+        0:'NOT',
+        1:'NOT',
+        2:'OFF',
+        3:'OFF'
+    }
+    solid_preds = []
+    olid_preds = []
+    for i,model_params in enumerate(models):
+        _, solid_pred = test_model(params=model_params,
+                                   experiment=experiment,
+                                   test_x=SOLID_test_tweets,
+                                   test_y=SOLID_test_labels)
+        _, olid_pred = test_model(params=model_params,
+                                  experiment=experiment,
+                                  test_x=OLID_test_tweets,
+                                  test_y=OLID_test_labels)
+        solid_preds.append(solid_pred)
+        olid_preds.append(olid_pred)
+
+    solid_preds = torch.vstack(solid_preds)
+    olid_preds = torch.vstack(olid_preds)
+    solid_votes = torch.sum(solid_preds,axis=0)
+    olid_votes = torch.sum(olid_preds,axis=0)
     
+    solid_labels = []
+    for s_vote in solid_votes:
+        s_label = vote_map[s_vote.item()]
+        solid_labels.append(s_label)
+    
+    olid_labels = []
+    for o_vote in olid_votes:
+        o_label = vote_map[o_vote.item()]
+        olid_labels.append(o_label)
+    
+    solid_results = classification_report(y_true=SOLID_test_labels, y_pred=solid_labels, output_dict=True, digits=4)
+    solid_correct = np.mean([y_true==y_pred for y_true,y_pred in zip(SOLID_test_labels,solid_labels)])
+    olid_results = classification_report(y_true=OLID_test_labels, y_pred=olid_labels, output_dict=True, digits=4)
+    olid_correct = np.mean([y_true==y_pred for y_true,y_pred in zip(OLID_test_labels,olid_labels)])
+    
+    return {'f1-score:':solid_results["macro avg"]["f1-score"],
+            'accuracy':solid_correct},{'f1-score:':olid_results["macro avg"]["f1-score"],
+            'accuracy':olid_correct}
+
 if __name__ == "__main__":
     SOLID_train_tweets, SOLID_train_labels = load_solid_train(datapath='data/SOLID/task_a_distant_tweets_clean.tsv')
     SOLID_test_tweets, SOLID_test_labels = load_solid_test(datapath='data/SOLID/test_a_tweets_clean.tsv',
@@ -281,6 +331,30 @@ if __name__ == "__main__":
         }
     ]
 
+    ensemble_models = {
+        'olid-train':{
+            'results':{
+                'olid-ensemble-test':None,
+                'solid-ensemble-test':None,
+            },
+            'results_path':'saved_models/olid_train_ensemble_results.json'
+        },
+        'olid-solid-pred-train':{
+            'results':{
+                'olid-ensemble-test':None,
+                'solid-ensemble-test':None,
+            },
+            'results_path':'saved_models/olid_solid_pred_train_ensemble_results.json'
+        },
+        'olid-solid-acc-train':{
+            'results':{
+                'olid-ensemble-test':None,
+                'solid-ensemble-test':None,
+            },
+            'results_path':'saved_models/olid_solid_acc_train_ensemble_results.json'
+        },
+    }
+
     # train and test all the models on OLID and SOLID test sets
     print('*'*40)
     print('experiment 1: train on OLID and test on OLID and SOLID test sets')
@@ -324,7 +398,7 @@ if __name__ == "__main__":
     print()
 
     print('*'*40)
-    print('experiment 3: test on train data add majority vote to minority vote models training set and retrain')
+    print('experiment 2: test on train data add majority vote to minority vote models training set and retrain')
     print('then test on both OLID and SOLID test sets')
 
     # read in N SOLID samples from the data set (stratified)
@@ -400,7 +474,7 @@ if __name__ == "__main__":
     print()
 
     print('*'*40)
-    print('experiment 4: add same number of new training points but use actual labels and retrain')
+    print('experiment 3: add same number of new training points but use actual labels and retrain')
     print('then test on both OLID and SOLID test sets')
     
     # train each classifier using new data and test on OLID
@@ -442,9 +516,26 @@ if __name__ == "__main__":
                                 test_y=SOLID_test_labels)
         model_params['results']['olid-solid-acc-train-solid-test'] = results
     
+    save_model_results(models)
+
     print('*'*40)
     print()   
 
+    print('*'*40)
+    print('experiment 4: use each of the three trained models to test as an ensemble on both OLID and SOLID test sets')
+
+    # test on OLID and SOLID test sets
+    experiments = ['olid-train','olid-solid-pred-train','olid-solid-acc-train']
+    for experiment in experiments:
+        solid_results,olid_results = test_ensemble(models=models, experiment=experiment)
+        ensemble_models[experiment]['results']['olid-ensemble-test'] = olid_results
+        ensemble_models[experiment]['results']['solid-ensemble-test'] = solid_results
+
+        with open(ensemble_models[experiment]['results_path'], "w") as f:
+            f.write(json.dumps(ensemble_models[experiment]['results']))
+
+    print('*'*40)
+    print()
+
     print('program finished')
     print('saving results')
-    save_model_results(models)
