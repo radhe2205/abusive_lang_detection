@@ -315,7 +315,7 @@ if __name__ == "__main__":
         results, _ = test_model(params=model_params,
                                 experiment='olid-train',
                                 test_x=SOLID_test_tweets,
-                                test_y=SOLIS_test_labels)
+                                test_y=SOLID_test_labels)
         model_params['results']['olid-train-solid-test'] = results
     
     save_model_results(models)
@@ -355,7 +355,6 @@ if __name__ == "__main__":
         label = vote_map[vote.item()]
         labels.append(label)
 
-
     # train each classifier using new data and test on OLID
     for i,model_params in enumerate(models):
         print('='*40)
@@ -392,7 +391,7 @@ if __name__ == "__main__":
         results, _ = test_model(params=model_params,
                                 experiment='olid-solid-pred-train',
                                 test_x=SOLID_test_tweets,
-                                test_y=SOLIS_test_labels)
+                                test_y=SOLID_test_labels)
         model_params['results']['olid-solid-pred-train-solid-test'] = results
     
     save_model_results(models)
@@ -440,7 +439,7 @@ if __name__ == "__main__":
         results, _ = test_model(params=model_params,
                                 experiment='olid-solid-acc-train',
                                 test_x=SOLID_test_tweets,
-                                test_y=SOLIS_test_labels)
+                                test_y=SOLID_test_labels)
         model_params['results']['olid-solid-acc-train-solid-test'] = results
     
     print('*'*40)
