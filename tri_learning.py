@@ -1,6 +1,8 @@
 import json
 import os
 import sys
+import argparse
+
 sys.path.append(os.getcwd())
 
 import torch
@@ -67,6 +69,18 @@ def save_model_results(models):
         with open(model_params['results_path'], "w") as f:
             f.write(json.dumps(model_params['results']))
 
+def early_stop(f1_scores, latency):
+    if len(f1_scores) < latency:
+        return False
+
+    window = f1_scores[-latency:]
+    curr = window[-1]
+    prevs = window[:-1]
+    sma = np.mean(prevs)
+    if curr < sma:
+        return True
+    return False
+
 def train(dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
     model.train()
@@ -79,7 +93,7 @@ def train(dataloader, model, loss_fn, optimizer):
         loss.backward()
         optimizer.step()
 
-def validation(dataloader, model, loss_fn):
+def validation(dataloader, model, loss_fn, f1_scores):
     size = len(dataloader.dataset)
     num_batches = len(dataloader)
     model.eval()
@@ -106,8 +120,7 @@ def validation(dataloader, model, loss_fn):
     print(f'F1-score: \t{results["macro avg"]["f1-score"]}')
     print(f'validation error: \naccuracy {correct:>5f}, avg loss: {test_loss:>7f}')
     print('-'*40)
-    return {'f1-score:':results["macro avg"]["f1-score"],
-            'accuracy':correct}
+    return early_stop(f1_scores, latency=8), results["macro avg"]["f1-score"]
 
 def test(dataloader, model):
     size = len(dataloader.dataset)
@@ -130,7 +143,7 @@ def test(dataloader, model):
     return {'f1-score:':results["macro avg"]["f1-score"],
             'accuracy':correct}, preds
 
-def train_model(params,experiment,train_x,train_y,test_x,test_y):
+def train_model(params,experiment,train_x,train_y,val_x,val_y):
     embedding, wordtoidx = load_embeddings_n_words(tweets=train_x, 
                                                    embedding_path=train_options["embedding_path"], 
                                                    embedding_dim=train_options["embedding_dim"])
@@ -147,28 +160,35 @@ def train_model(params,experiment,train_x,train_y,test_x,test_y):
                                   wordtoidx=wordtoidx, 
                                   batch_size=train_options["batch_size"])
 
-    test_loader = get_dataloader(tweets=test_x,
-                                 labels=test_y, 
-                                 wordtoidx=wordtoidx, 
-                                 batch_size=train_options["batch_size"])
+    val_loader = get_dataloader(tweets=val_x,
+                                labels=val_y, 
+                                wordtoidx=wordtoidx, 
+                                batch_size=train_options["batch_size"])
 
     optimizer = Adam(model.parameters(), lr=train_options["lr"])
     loss_fn = nn.BCELoss(reduction='sum')
-    sched = ExponentialLR(optimizer, gamma=0.99)
+    sched = ExponentialLR(optimizer, gamma=0.95)
     
+    f1_scores = []
+    best_f1 = 0
     for t in range(train_options['epochs']):
         print(f'epoch {t}')
         print('-'*40)
         train(train_loader, model, loss_fn, optimizer)
-        results = validation(test_loader, model, loss_fn)
+        stop, f1_score = validation(val_loader, model, loss_fn, f1_scores)
+        f1_scores.append(f1_score)
+
+        if f1_score > best_f1:
+            save_model(model, params['model_path'][experiment])
+        
+        if t > 15 and stop: break
+
         sched.step()    
         print()
-    
-    save_model(model, params['model_path'][experiment])
 
 def test_model(params,experiment,test_x,test_y):
     wordtoidx = load_saved_vocab(params['vocab_path'][experiment])
-    embedding = GloveEmbedding(train_options["embedding_dim"], wordtoidx, train_options["embedding_dim"], False)
+    embedding = GloveEmbedding(train_options["embedding_dim"], wordtoidx, train_options["embedding_path"], False)
 
     model = params['model_class'](embeddings=embedding, 
                                   in_dim=train_options["embedding_dim"],
@@ -236,6 +256,10 @@ def test_ensemble(models,experiment):
             'accuracy':olid_correct}
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--folder', action='store', dest='folder', default='saved_models', type=str)
+    res = parser.parse_args()
+
     SOLID_train_tweets, SOLID_train_labels = load_solid_train(datapath='data/SOLID/task_a_distant_tweets_clean.tsv')
     SOLID_test_tweets, SOLID_test_labels = load_solid_test(datapath='data/SOLID/test_a_tweets_clean.tsv',
                                                            labelpath='data/SOLID/test_a_labels.csv')
@@ -247,10 +271,11 @@ if __name__ == "__main__":
         "test_tweet_path": "data/OLIDv1.0/testset-levela_clean.tsv",
         "test_label_path": "data/OLIDv1.0/labels-levela.csv",
         "sub_task": "subtask_a",
+        "sample_size":0.77,
         "batch_size": 32,
         "lr": 0.001,
-        "epochs": 100,
-        "model_type": "rnn" # attention | rnn
+        "epochs": 50,
+        "model_type": "rnn"
     }   
 
     models = [
@@ -259,14 +284,14 @@ if __name__ == "__main__":
             'num_layers':1,
             'hidden_size':128,
             'model_path':{
-                'olid-train':'saved_models/model_1_olid.model',
-                'olid-solid-pred-train':'saved_models/model_1_solid_pred.model',
-                'olid-solid-acc-train':'saved_models/model_1_solid_acc.model'
+                'olid-train':f'{res.folder}/model_1_olid.model',
+                'olid-solid-pred-train':f'{res.folder}/model_1_solid_pred.model',
+                'olid-solid-acc-train':f'{res.folder}/model_1_solid_acc.model'
             },
             'vocab_path':{
-                'olid-train':'saved_models/vocab_1_olid.json',
-                'olid-solid-pred-train':'saved_models/vocab_1_solid_pred.json',
-                'olid-solid-acc-train':'saved_models/vocab_1_solid_acc.json'
+                'olid-train':f'{res.folder}/vocab_1_olid.json',
+                'olid-solid-pred-train':f'{res.folder}/vocab_1_solid_pred.json',
+                'olid-solid-acc-train':f'{res.folder}/vocab_1_solid_acc.json'
             },
             'seed':1,
             'results':{
@@ -277,21 +302,21 @@ if __name__ == "__main__":
                 'olid-solid-acc-train-olid-test':None,
                 'olid-solid-acc-train-solid-test':None
             },
-            'results_path':'saved_models/model_1_results.json'
+            'results_path':f'{res.folder}/model_1_results.json'
         },
         {
             'model_class':RNNModel,
             'num_layers':1,
             'hidden_size':128,
             'model_path':{
-                'olid-train':'saved_models/model_2_olid.model',
-                'olid-solid-pred-train':'saved_models/model_2_solid_pred.model',
-                'olid-solid-acc-train':'saved_models/model_2_solid_acc.model'
+                'olid-train':f'{res.folder}/model_2_olid.model',
+                'olid-solid-pred-train':f'{res.folder}/model_2_solid_pred.model',
+                'olid-solid-acc-train':f'{res.folder}/model_2_solid_acc.model'
             },
             'vocab_path':{
-                'olid-train':'saved_models/vocab_2_olid.json',
-                'olid-solid-pred-train':'saved_models/vocab_2_solid_pred.json',
-                'olid-solid-acc-train':'saved_models/vocab_2_solid_acc.json'
+                'olid-train':f'{res.folder}/vocab_2_olid.json',
+                'olid-solid-pred-train':f'{res.folder}/vocab_2_solid_pred.json',
+                'olid-solid-acc-train':f'{res.folder}/vocab_2_solid_acc.json'
             },
             'seed':2,
             'results':{
@@ -302,23 +327,23 @@ if __name__ == "__main__":
                 'olid-solid-acc-train-olid-test':None,
                 'olid-solid-acc-train-solid-test':None
             },
-            'results_path':'saved_models/model_2_results.json'
+            'results_path':f'{res.folder}/model_2_results.json'
         },
         {
             'model_class':RNNModel,
             'num_layers':1,
             'hidden_size':128,
             'model_path':{
-                'olid-train':'saved_models/model_3_olid.model',
-                'olid-solid-pred-train':'saved_models/model_3_solid_pred.model',
-                'olid-solid-acc-train':'saved_models/model_3_solid_acc.model'
+                'olid-train':f'{res.folder}/model_3_olid.model',
+                'olid-solid-pred-train':f'{res.folder}/model_3_solid_pred.model',
+                'olid-solid-acc-train':f'{res.folder}/model_3_solid_acc.model'
             },
             'vocab_path':{
-                'olid-train':'saved_models/vocab_3_olid.json',
-                'olid-solid-pred-train':'saved_models/vocab_3_solid_pred.json',
-                'olid-solid-acc-train':'saved_models/vocab_3_solid_acc.json'
+                'olid-train':f'{res.folder}/vocab_3_olid.json',
+                'olid-solid-pred-train':f'{res.folder}/vocab_3_solid_pred.json',
+                'olid-solid-acc-train':f'{res.folder}/vocab_3_solid_acc.json'
             },
-            'seed':3,
+            'seed':5,
             'results':{
                 'olid-train-olid-test':None,
                 'olid-train-solid-test':None,
@@ -327,7 +352,7 @@ if __name__ == "__main__":
                 'olid-solid-acc-train-olid-test':None,
                 'olid-solid-acc-train-solid-test':None
             },
-            'results_path':'saved_models/model_3_results.json'
+            'results_path':f'{res.folder}/model_3_results.json'
         }
     ]
 
@@ -337,21 +362,21 @@ if __name__ == "__main__":
                 'olid-ensemble-test':None,
                 'solid-ensemble-test':None,
             },
-            'results_path':'saved_models/olid_train_ensemble_results.json'
+            'results_path':f'{res.folder}/olid_train_ensemble_results.json'
         },
         'olid-solid-pred-train':{
             'results':{
                 'olid-ensemble-test':None,
                 'solid-ensemble-test':None,
             },
-            'results_path':'saved_models/olid_solid_pred_train_ensemble_results.json'
+            'results_path':f'{res.folder}/olid_solid_pred_train_ensemble_results.json'
         },
         'olid-solid-acc-train':{
             'results':{
                 'olid-ensemble-test':None,
                 'solid-ensemble-test':None,
             },
-            'results_path':'saved_models/olid_solid_acc_train_ensemble_results.json'
+            'results_path':f'{res.folder}/olid_solid_acc_train_ensemble_results.json'
         },
     }
 
@@ -363,16 +388,21 @@ if __name__ == "__main__":
         print(f'model {i+1}')
         pp = Preprocessor()
         OLID_train_tweets, OLID_train_labels = pp.get_train_data(train_options["train_data_path"], 
-                                                                 sample=0.77,
+                                                                 sample=train_options['sample_size'],
                                                                  seed=model_params['seed'])
+        OLID_train_tweets, OLID_val_tweets, OLID_train_labels, OLID_val_labels = train_test_split(OLID_train_tweets,
+                                                                                                  OLID_train_labels,
+                                                                                                  test_size=0.1,
+                                                                                                  stratify=OLID_train_labels,
+                                                                                                  random_state=1)
         OLID_test_tweets, OLID_test_labels = pp.get_test_data(train_options['test_tweet_path'],
                                                               train_options['test_label_path'])
         train_model(params=model_params,
                     experiment='olid-train',
                     train_x=OLID_train_tweets,
                     train_y=OLID_train_labels,
-                    test_x=OLID_test_tweets,
-                    test_y=OLID_test_labels)
+                    val_x=OLID_val_tweets,
+                    val_y=OLID_val_labels)
 
         results, _ = test_model(params=model_params,
                                 experiment='olid-train',
@@ -435,8 +465,13 @@ if __name__ == "__main__":
         print(f'model {i+1}')
         pp = Preprocessor()
         OLID_train_tweets, OLID_train_labels = pp.get_train_data(train_options["train_data_path"], 
-                                                                 sample=0.77,
+                                                                 sample=train_options['sample_size'],
                                                                  seed=model_params['seed'])
+        OLID_train_tweets, OLID_val_tweets, OLID_train_labels, OLID_val_labels = train_test_split(OLID_train_tweets,
+                                                                                                  OLID_train_labels,
+                                                                                                  test_size=0.1,
+                                                                                                  stratify=OLID_train_labels,
+                                                                                                  random_state=1)
         OLID_test_tweets, OLID_test_labels = pp.get_test_data(train_options['test_tweet_path'],
                                                               train_options['test_label_path'])
         
@@ -447,8 +482,8 @@ if __name__ == "__main__":
                     experiment='olid-solid-pred-train',
                     train_x=full_train_tweets,
                     train_y=full_train_labels,
-                    test_x=OLID_test_tweets,
-                    test_y=OLID_test_labels)
+                    val_x=OLID_val_tweets,
+                    val_y=OLID_val_labels)
 
         results, _ = test_model(params=model_params,
                                 experiment='olid-solid-pred-train',
@@ -483,8 +518,13 @@ if __name__ == "__main__":
         print(f'model {i+1}')
         pp = Preprocessor()
         OLID_train_tweets, OLID_train_labels = pp.get_train_data(train_options["train_data_path"], 
-                                                                 sample=0.77,
+                                                                 sample=train_options['sample_size'],
                                                                  seed=model_params['seed'])
+        OLID_train_tweets, OLID_val_tweets, OLID_train_labels, OLID_val_labels = train_test_split(OLID_train_tweets,
+                                                                                                  OLID_train_labels,
+                                                                                                  test_size=0.1,
+                                                                                                  stratify=OLID_train_labels,
+                                                                                                  random_state=1)
         OLID_test_tweets, OLID_test_labels = pp.get_test_data(train_options['test_tweet_path'],
                                                               train_options['test_label_path'])
         
@@ -495,8 +535,8 @@ if __name__ == "__main__":
                     experiment='olid-solid-acc-train',
                     train_x=full_train_tweets,
                     train_y=full_train_labels,
-                    test_x=OLID_test_tweets,
-                    test_y=OLID_test_labels)
+                    val_x=OLID_val_tweets,
+                    val_y=OLID_val_labels)
 
         results, _ = test_model(params=model_params,
                                 experiment='olid-solid-acc-train',
