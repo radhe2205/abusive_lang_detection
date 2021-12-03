@@ -2,6 +2,7 @@ import copy
 import os
 import traceback
 import json 
+import sys
 
 import torch
 
@@ -74,6 +75,7 @@ def format_tri_learning_results(folder):
     print(f'solid f1: {solid_res["f1-score:"]} acc: {solid_res["accuracy"]}')
 
     # ---------------------------------------------------------------------------#
+    print()
     print('olid solid pred train')
     for i in range(3):
         results_path = f'{path}/model_{i+1}_results.json'
@@ -97,7 +99,7 @@ def format_tri_learning_results(folder):
     print(f'olid f1: {olid_res["f1-score:"]} acc: {olid_res["accuracy"]}')
     print(f'solid f1: {solid_res["f1-score:"]} acc: {solid_res["accuracy"]}')
      # ---------------------------------------------------------------------------#
-
+    print()
     print('olid solid acc train')
     for i in range(3):
         results_path = f'{path}/model_{i+1}_results.json'
@@ -122,4 +124,4 @@ def format_tri_learning_results(folder):
     print(f'solid f1: {solid_res["f1-score:"]} acc: {solid_res["accuracy"]}')
 
 if __name__ == "__main__":
-    format_tri_learning_results(folder='simple_rnn_2')
+    format_tri_learning_results(folder=sys.argv[1])
