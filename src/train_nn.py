@@ -179,7 +179,7 @@ train_options = {
     "batch_size": 32,
     "lr": 0.001,
     "epochs": 100,
-    "model_type": "attention" # attention | rnn
+    "model_type": "rnn" # attention | rnn
 }
 
 # train_options["sub_task"] = "subtask_c"
@@ -217,4 +217,4 @@ def train_taskc(model_type = "rnn"): # model_types = rnn | attention
     train_options = change_path_to_absolute(train_options)
     train_nn(train_options)
 
-train_taskb()
+train_taska(model_type="attention")

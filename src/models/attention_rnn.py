@@ -35,12 +35,12 @@ class AttentionModel(nn.Module):
 
         self.rnn = nn.LSTM(input_size=in_dim, hidden_size=hidden_size, num_layers=num_layers, batch_first=True, bidirectional=True, dropout=0.5)
 
-        self.attn_param = AttentionParam(self.hidden_size * 2, self.hidden_size)
-        self.attn_param = AttentionParam(embeddings.fixed_embedding.weight.shape[-1], self.hidden_size)
+        # self.attn_param = AttentionParam(self.hidden_size * 2, self.hidden_size)
+        # self.attn_param = AttentionParam(embeddings.fixed_embedding.weight.shape[-1], self.hidden_size)
 
-        self.multi_attn = nn.MultiheadAttention(embed_dim=self.hidden_size, num_heads=4, dropout=0.) # Batch First = False
+        self.multi_attn = nn.MultiheadAttention(embed_dim=self.hidden_size * 2, num_heads=4, dropout=0.) # Batch First = False
 
-        self.rnn2 = nn.LSTM(input_size = self.hidden_size, hidden_size=hidden_size, num_layers = 1, batch_first=True, bidirectional=True, dropout=0.5)
+        self.rnn2 = nn.LSTM(input_size = self.hidden_size * 2, hidden_size=hidden_size, num_layers = 1, batch_first=True, bidirectional=True, dropout=0.5)
 
         self.linear_layers = nn.Sequential(
             nn.BatchNorm1d(self.hidden_size * 2),
@@ -58,9 +58,9 @@ class AttentionModel(nn.Module):
     def forward(self, samples, w_lens):
         word_embs = self.embeddings.get_embeddings(samples, w_lens)
         o, (h,c) = self.rnn(word_embs)
-        q,k,v = self.attn_param(o)
-        o, o_weights= self.multi_attn(q,k,v)
-        o = o.reshape(o.shape[1], o.shape[0], -1)
+        # q,k,v = self.attn_param(o)
+        o, o_weights= self.multi_attn(o,o,o)
+        # o = o.reshape(o.shape[1], o.shape[0], -1)
         o, (h,c) = self.rnn2(o)
         # o = o[:,-1,:]
         o = torch.cat((o[:,-1,:self.hidden_size], o[:, 0, self.hidden_size:]), dim=-1)
