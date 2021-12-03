@@ -1,6 +1,7 @@
 import copy
 import os
 import traceback
+import json 
 
 import torch
 
@@ -45,3 +46,80 @@ def load_model(model, model_path):
     except Exception as e:
         traceback.print_exc(e)
         print("Error occured while loading, ignoring...")
+
+def format_tri_learning_results(folder):
+    path = f'saved_models/{folder}'
+
+    print('olid train')
+    for i in range(3):
+        results_path = f'{path}/model_{i+1}_results.json'
+        with open(results_path, 'r') as f:
+            results = f.read()
+            results = json.loads(results)
+        olid_f1_score = results['olid-train-olid-test']['f1-score:']
+        olid_acc = results['olid-train-olid-test']['accuracy']
+        solid_f1_score = results['olid-train-solid-test']['f1-score:']
+        solid_acc = results['olid-train-solid-test']['accuracy']
+        print(f'model {i+1}')
+        print(f'olid f1: {round(olid_f1_score,4)} acc: {round(olid_acc,4)}')
+        print(f'solid f1: {round(solid_f1_score,4)} acc: {round(solid_acc,4)}')
+    
+    with open(f'{path}/olid_train_ensemble_results.json', 'r') as f:
+        ens_results = f.read()
+        ens_results = json.loads(ens_results)
+    olid_res = ens_results["olid-ensemble-test"]
+    solid_res = ens_results["solid-ensemble-test"]
+    print(f'ensemble')
+    print(f'olid f1: {olid_res["f1-score:"]} acc: {olid_res["accuracy"]}')
+    print(f'solid f1: {solid_res["f1-score:"]} acc: {solid_res["accuracy"]}')
+
+    # ---------------------------------------------------------------------------#
+    print('olid solid pred train')
+    for i in range(3):
+        results_path = f'{path}/model_{i+1}_results.json'
+        with open(results_path, 'r') as f:
+            results = f.read()
+            results = json.loads(results)
+        olid_f1_score = results['olid-solid-pred-train-olid-test']['f1-score:']
+        olid_acc = results['olid-solid-pred-train-olid-test']['accuracy']
+        solid_f1_score = results['olid-solid-pred-train-solid-test']['f1-score:']
+        solid_acc = results['olid-solid-pred-train-solid-test']['accuracy']
+        print(f'model {i+1}')
+        print(f'olid f1: {round(olid_f1_score,4)} acc: {round(olid_acc,4)}')
+        print(f'solid f1: {round(solid_f1_score,4)} acc: {round(solid_acc,4)}')
+    
+    with open(f'{path}/olid_solid_pred_train_ensemble_results.json', 'r') as f:
+        ens_results = f.read()
+        ens_results = json.loads(ens_results)
+    olid_res = ens_results["olid-ensemble-test"]
+    solid_res = ens_results["solid-ensemble-test"]
+    print(f'ensemble')
+    print(f'olid f1: {olid_res["f1-score:"]} acc: {olid_res["accuracy"]}')
+    print(f'solid f1: {solid_res["f1-score:"]} acc: {solid_res["accuracy"]}')
+     # ---------------------------------------------------------------------------#
+
+    print('olid solid acc train')
+    for i in range(3):
+        results_path = f'{path}/model_{i+1}_results.json'
+        with open(results_path, 'r') as f:
+            results = f.read()
+            results = json.loads(results)
+        olid_f1_score = results['olid-solid-acc-train-olid-test']['f1-score:']
+        olid_acc = results['olid-solid-acc-train-olid-test']['accuracy']
+        solid_f1_score = results['olid-solid-acc-train-solid-test']['f1-score:']
+        solid_acc = results['olid-solid-acc-train-solid-test']['accuracy']
+        print(f'model {i+1}')
+        print(f'olid f1: {round(olid_f1_score,4)} acc: {round(olid_acc,4)}')
+        print(f'solid f1: {round(solid_f1_score,4)} acc: {round(solid_acc,4)}')
+    
+    with open(f'{path}/olid_solid_acc_train_ensemble_results.json', 'r') as f:
+        ens_results = f.read()
+        ens_results = json.loads(ens_results)
+    olid_res = ens_results["olid-ensemble-test"]
+    solid_res = ens_results["solid-ensemble-test"]
+    print(f'ensemble')
+    print(f'olid f1: {olid_res["f1-score:"]} acc: {olid_res["accuracy"]}')
+    print(f'solid f1: {solid_res["f1-score:"]} acc: {solid_res["accuracy"]}')
+
+if __name__ == "__main__":
+    format_tri_learning_results(folder='simple_rnn_2')
