@@ -13,7 +13,6 @@ class TweetDataset(nn.Module):
         label_idx = {label: i for i, label in enumerate(sorted(set(labels)))}
         self.tweets = torch.empty((len(tweets), self.max_len)).long().fill_(-1)
         self.labels = torch.zeros(len(tweets))
-        #self.word_lens = torch.zeros(len(tweets))
         if len(label_idx.keys()) > 2:
             self.labels = self.labels.long()
 
@@ -25,11 +24,8 @@ class TweetDataset(nn.Module):
                 word = word if word in wordtoidx else "<unk>"
                 self.tweets[idx, word_idx] = wordtoidx[word]
             self.labels[idx] = label_idx[label]
-            #self.word_lens[idx] = len(tweet.split())
 
         self.labels = self.labels.unsqueeze(1)
-        # self.tweets = torch.cat((self.tweets, self.tweets[self.labels == 1]), dim=0)
-        # self.labels = torch.cat((self.labels, self.labels[self.labels == 1]), dim=0)
 
     def __len__(self):
         return self.labels.shape[0]
