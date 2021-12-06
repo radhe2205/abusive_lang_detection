@@ -50,8 +50,8 @@ class RNNModel(nn.Module):
                 torch.nn.init.xavier_normal_(layer.weight.data)
 
     # number of words in tweet are limited, will use padded fixed length sequence.
-    def forward(self, samples, w_lens):
-        word_embs = self.embeddings.get_embeddings(samples, w_lens)
+    def forward(self, samples):
+        word_embs = self.embeddings.get_embeddings(samples)
         o, (h,c) = self.rnn(word_embs)
         # o = o[:,-1,:]
         o = torch.cat((o[:,-1,:self.hidden_size], o[:, 0, self.hidden_size:]), dim=-1)

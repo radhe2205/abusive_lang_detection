@@ -72,8 +72,8 @@ def check_val_accuracy(model, loader, loss_fn):
     all_target = torch.zeros(0)
 
     with torch.no_grad():
-        for X,Y,w_len in loader:
-            Y_pred = model(X.to(device), w_len.to(device)).cpu()
+        for X,Y in loader:
+            Y_pred = model(X.to(device)).cpu()
             Y_pred = Y_pred.squeeze()
             total_loss += calculate_weighted_loss(Y_pred, Y, loss_fn).item()
             if len(Y_pred.shape) == 1:
@@ -140,8 +140,8 @@ def train_nn(train_options):
         total_correct = 0
         total_loss = 0
         total_items = train_loader.dataset.__len__()
-        for X, Y, w_len in train_loader:
-            Y_pred = model(X.to(device), w_len.to(device)).cpu()
+        for X, Y in train_loader:
+            Y_pred = model(X.to(device)).cpu()
             Y_pred = Y_pred.squeeze()
             loss = calculate_weighted_loss(Y_pred, Y, loss_fn)
             if len(Y_pred.shape) == 1:
