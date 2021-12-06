@@ -5,7 +5,7 @@ import numpy as np
 
 class LogisticRegressionModel(nn.Module):
     def __init__(self,input_dim):
-        super(LogisticRegression, self).__init__()
+        super(LogisticRegressionModel, self).__init__()
 
         self.input_dim = input_dim
         self.model = nn.Sequential(

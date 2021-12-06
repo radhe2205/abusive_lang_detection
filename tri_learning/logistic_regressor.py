@@ -45,8 +45,8 @@ class LogisticRegressor(Model):
     
         train_x = vectorizer.fit_transform(train_x)
         val_x = vectorizer.transform(val_x)
-        train_y = gen_labels(train_y)
-        val_y = gen_labels(val_y)
+        train_y = self.gen_labels(train_y)
+        val_y = self.gen_labels(val_y)
 
         self.save_vectorizer(self.params['vectorizer_path'][experiment], vectorizer)
 
@@ -82,7 +82,7 @@ class LogisticRegressor(Model):
         vectorizer = self.load_vectorizer(self.params['vectorizer_path'][experiment])
 
         test_x = vectorizer.transform(test_x)   
-        test_y = gen_labels(test_y)   
+        test_y = self.gen_labels(test_y)   
 
         test_dataset = TextDataset(test_x, test_y)
         test_loader = DataLoader(test_dataset, batch_size=self.params['batch_size'])
