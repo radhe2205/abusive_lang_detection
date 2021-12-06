@@ -225,7 +225,7 @@ class Preprocessor:
         return text
 
     def remove_punc(self, text):
-        text = re.sub('[()!?.,:;&@#*$%^+=-]', ' ', text)
+        text = re.sub('[\{\}()!?.,:;&@#*$%^+=-]', ' ', text)
         text = re.sub('\[.*?\]', ' ', text)
         return text
 
@@ -389,7 +389,7 @@ def main():
 def text_clean_unit_tests():
 
     #s = "@USER thissssssss is a test, URL That NNEEEEEEEEDS!!!! to be properly cleand. me+you=forever! &gt;&gt;&gt; THE8 worst 99 &lt;&lt; &amp; :) #loSER abc... i'm didn't know you'd be this's compliccated &*(#$)@#$"
-    s = "@USER @USER @USER It's not my fault you supported gun control run running ran runs better"
+    s = "@USER @USER @USER It's not my fault you supported gun control run running ran runs better #Trump"
     pp = Preprocessor()
     
     sym_spell = SymSpell(max_dictionary_edit_distance=2, prefix_length=7)
@@ -399,13 +399,11 @@ def text_clean_unit_tests():
     sym_spell.load_dictionary(dictionary_path, term_index=0, count_index=1)
 
     lemmatizer = WordNetLemmatizer()
-
+    print(s)
     stop = set(nltk.corpus.stopwords.words('english'))
     s = pp.remove_mention_url(s)
     print(s)
     s = pp.remove_entities(s)
-    print(s)
-    s = pp.remove_hastags(s)
     print(s)
     s = pp.lowercase(s)
     print(s)
@@ -413,22 +411,15 @@ def text_clean_unit_tests():
     print(s)
     s = pp.remove_non_ascii(s)
     print(s)
+    print('slkjdfklsj')
     s = pp.remove_punc(s)
     print(s)
-    s = pp.remove_numbers(s)
-    print(s)
-    s = pp.remove_stop(s,stop)
-    print(s)
-    s = pp.reduce_words(s)
-    print(s)
-    s = pp.spell_correction(s,sym_spell)
-    print(s)
-    s = pp.stem_words(s,lemmatizer)
-    print(s)
+    print('laksjdfklsdj')
 
 if __name__ == "__main__":
-    pp = Preprocessor()
-    dataset_path = 'data/OLIDv1.0/olid-training-v1.0_clean.tsv'
-    tweets, labels = pp.get_train_data(dataset_path, 'subtask_a')
-    _,_ = pp.get_test_data('data/OLIDv1.0/testset-levela_clean.tsv',
-                            'data/OLIDv1.0/labels-levela.csv')
+    # pp = Preprocessor()
+    # dataset_path = 'data/OLIDv1.0/olid-training-v1.0_clean.tsv'
+    # tweets, labels = pp.get_train_data(dataset_path, 'subtask_a')
+    # _,_ = pp.get_test_data('data/OLIDv1.0/testset-levela_clean.tsv',
+    #                         'data/OLIDv1.0/labels-levela.csv')
+    text_clean_unit_tests()
