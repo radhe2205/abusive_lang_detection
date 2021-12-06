@@ -271,7 +271,7 @@ if __name__ == "__main__":
         "test_tweet_path": "data/OLIDv1.0/testset-levela_clean.tsv",
         "test_label_path": "data/OLIDv1.0/labels-levela.csv",
         "sub_task": "subtask_a",
-        "sample_size":0.77,
+        "sample_size":0.75,
         "batch_size": 32,
         "lr": 0.001,
         "epochs": 50,
@@ -281,7 +281,7 @@ if __name__ == "__main__":
     models = [
         {   
             'model_class':RNNModel,
-            'num_layers':1,
+            'num_layers':2,
             'hidden_size':128,
             'model_path':{
                 'olid-train':f'{res.folder}/model_1_olid.model',
@@ -306,7 +306,7 @@ if __name__ == "__main__":
         },
         {
             'model_class':RNNModel,
-            'num_layers':1,
+            'num_layers':2,
             'hidden_size':128,
             'model_path':{
                 'olid-train':f'{res.folder}/model_2_olid.model',
@@ -331,7 +331,7 @@ if __name__ == "__main__":
         },
         {
             'model_class':RNNModel,
-            'num_layers':1,
+            'num_layers':2,
             'hidden_size':128,
             'model_path':{
                 'olid-train':f'{res.folder}/model_3_olid.model',
