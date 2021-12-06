@@ -39,12 +39,7 @@ class GloveEmbedding(WordEmbedding):
     def get_embeddings_w_words(self, words):
         return self.embeddings[[self.wordtoidx[word] for word in words]]
 
-    def get_embeddings(self, idxes, w_lens):
-        for i in range(idxes.shape[0]):
-            if w_lens[i] == 0:
-                continue
-            # idxes[i, torch.randint(0, w_lens[i].long().item(), (int(w_lens[i].item() / 10) * 2,))] = self.wordtoidx["<unk>"]
-
+    def get_embeddings(self, idxes):
         fixed_idxes = idxes.clone()
         train_idxes = idxes.clone()
 
