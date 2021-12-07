@@ -59,37 +59,24 @@ class NaiveBayes:
 
 
 if __name__ == "__main__":
+    train_options = {
+        "train_data_path": "data/OLIDv1.0/olid-training-v1.0_clean.tsv",
+        "test_tweet_path": "data/OLIDv1.0/testset-levela_clean.tsv",
+        "test_label_path": "data/OLIDv1.0/labels-levela.csv",
+        "sample_size":1,
+        "seed":1
+    }   
     print('='*40)
-    print('task A')
+    print('task B')
     print('loading data...')
     pp = Preprocessor()
-    train_data = pp.read_tsv(path='data/OLIDv1.0/olid-training-v1.0.tsv')
-    test_a_data = pp.read_tsv(path='data/OLIDv1.0/testset-levela.tsv')
-    test_a_labels = pp.read_csv(path='data/OLIDv1.0/labels-levela.csv')
-    
-    print('cleaning data...')
-    start = time.time()
-    train_data = pp.clean_data(data=train_data,
-                               lower_case=True, 
-                               remove_hastag=True, 
-                               remove_user=True, 
-                               remove_url=True, 
-                               remove_punc=True, 
-                               remove_non_alpha=True, 
-                               remove_stop=False)
-    
-    test_data = pp.clean_data(data=test_a_data,
-                              lower_case=True, 
-                              remove_hastag=True, 
-                              remove_user=True, 
-                              remove_url=True, 
-                              remove_punc=True, 
-                              remove_non_alpha=True, 
-                              remove_stop=False)
-    end = time.time()
-    print(f'took {round(end-start,2)}s') 
-    train_x, train_y = pp.get_train_split_by_task(data=train_data, task='subtask_a')
-    test_x, test_y = pp.get_test_spilt_by_task(data=test_data, labels=test_a_labels)
+    train_x, train_y = pp.get_train_data(train_options["train_data_path"], 
+                                        sample=train_options['sample_size'],
+                                        seed=train_options['seed'],
+                                        task='subtask_a') 
+        
+    test_x, test_y = pp.get_test_data(train_options['test_tweet_path'],
+                                      train_options['test_label_path'])
     print('='*40)
     print()
 
