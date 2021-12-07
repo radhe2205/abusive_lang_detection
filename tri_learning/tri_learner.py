@@ -17,6 +17,11 @@ from character_lstm import CharacterLSTM
 from bi_lstm import BiLSTM
 from logistic_regressor import LogisticRegressor
 
+def save_model_graphs(models):
+    for i,model in enumerate(models):
+        with open(model.params['graph_path'], "w") as f:
+            f.write(json.dumps(model.params['graphs']))
+
 def save_model_results(models):
     for i,model in enumerate(models):
         with open(model.params['results_path'], "w") as f:
@@ -55,11 +60,11 @@ def test_ensemble(models,experiment):
         _, solid_pred = model.test_model(experiment=experiment,
                                          test_x=SOLID_test_tweets,
                                          test_y=SOLID_test_labels)
-        _, olid_pred = model.test(experiment=experiment,
-                                  test_x=OLID_test_tweets,
-                                  test_y=OLID_test_labels)
-        solid_preds.append(solid_pred)
-        olid_preds.append(olid_pred)
+        _, olid_pred = model.test_model(experiment=experiment,
+                                        test_x=OLID_test_tweets,
+                                        test_y=OLID_test_labels)
+        solid_preds.append(solid_pred.squeeze())
+        olid_preds.append(olid_pred.squeeze())
 
     solid_preds = torch.vstack(solid_preds)
     olid_preds = torch.vstack(olid_preds)
@@ -90,7 +95,7 @@ if __name__ == "__main__":
         "train_data_path": "data/OLIDv1.0/olid-training-v1.0_clean.tsv",
         "test_tweet_path": "data/OLIDv1.0/testset-levela_clean.tsv",
         "test_label_path": "data/OLIDv1.0/labels-levela.csv",
-        "sample_size":1,
+        "sample_size":0.8,
         "seed":1
     }   
     
@@ -128,15 +133,23 @@ if __name__ == "__main__":
             'olid-solid-acc-train-olid-test':None,
             'olid-solid-acc-train-solid-test':None
         },
+        'graphs':{
+            'olid-train':{},
+            'olid-solid-pred-train':{},
+            'olid-solid-acc-train':{}
+        },
+        'graph_path':f'{res.folder}/model_1_graphs.json',
         'results_path':f'{res.folder}/model_1_results.json'
     }
     bi_lstm = BiLSTM(params=bi_lstm_params)
-
-    char_lstm_params = {
+    
+    bi_lstm_params_2 = {
+        'embedding_path':'data/glove822/glove.6B.300d.txt',
+        'embedding_dim':300,
         'num_layers':2,
-        'hidden_size':128,
+        'hidden_size':32,
         'batch_size':32,
-        'lr':0.001,
+        'lr':0.0001,
         'epochs':100,
         'model_path':{
             'olid-train':f'{res.folder}/model_2_olid.model',
@@ -148,11 +161,6 @@ if __name__ == "__main__":
             'olid-solid-pred-train':f'{res.folder}/vocab_2_solid_pred.json',
             'olid-solid-acc-train':f'{res.folder}/vocab_2_solid_acc.json'
         },
-        'max_len_path':{
-            'olid-train':f'{res.folder}/max_2_olid.json',
-            'olid-solid-pred-train':f'{res.folder}/max_2_solid_pred.json',
-            'olid-solid-acc-train':f'{res.folder}/max_2_solid_acc.json'
-        },
         'results':{
             'olid-train-olid-test':None,
             'olid-train-solid-test':None,
@@ -161,23 +169,33 @@ if __name__ == "__main__":
             'olid-solid-acc-train-olid-test':None,
             'olid-solid-acc-train-solid-test':None
         },
+        'graphs':{
+            'olid-train':{},
+            'olid-solid-pred-train':{},
+            'olid-solid-acc-train':{}
+        },
+        'graph_path':f'{res.folder}/model_2_graphs.json',
         'results_path':f'{res.folder}/model_2_results.json'
     }
-    char_lstm = CharacterLSTM(params=char_lstm_params)
+    bi_lstm_2 = BiLSTM(params=bi_lstm_params_2)
 
-    logit_reg_params = {
+    bi_lstm_params_3 = {
+        'embedding_path':'data/glove822/glove.6B.300d.txt',
+        'embedding_dim':300,
+        'num_layers':2,
+        'hidden_size':32,
         'batch_size':32,
-        'lr':0.01,
+        'lr':0.0001,
         'epochs':100,
         'model_path':{
             'olid-train':f'{res.folder}/model_3_olid.model',
             'olid-solid-pred-train':f'{res.folder}/model_3_solid_pred.model',
             'olid-solid-acc-train':f'{res.folder}/model_3_solid_acc.model'
         },
-        'vectorizer_path':{
-            'olid-train':f'{res.folder}/vec_3_olid.json',
-            'olid-solid-pred-train':f'{res.folder}/vec_3_solid_pred.json',
-            'olid-solid-acc-train':f'{res.folder}/vec_3_solid_acc.json'
+        'vocab_path':{
+            'olid-train':f'{res.folder}/vocab_3_olid.json',
+            'olid-solid-pred-train':f'{res.folder}/vocab_3_solid_pred.json',
+            'olid-solid-acc-train':f'{res.folder}/vocab_3_solid_acc.json'
         },
         'results':{
             'olid-train-olid-test':None,
@@ -187,9 +205,86 @@ if __name__ == "__main__":
             'olid-solid-acc-train-olid-test':None,
             'olid-solid-acc-train-solid-test':None
         },
-        'results_path':f'{res.folder}/model_3_results.json'        
+        'graphs':{
+            'olid-train':{},
+            'olid-solid-pred-train':{},
+            'olid-solid-acc-train':{}
+        },
+        'graph_path':f'{res.folder}/model_3_graphs.json',
+        'results_path':f'{res.folder}/model_3_results.json'
     }
-    logit_reg = LogisticRegressor(params=logit_reg_params)
+    bi_lstm_3 = BiLSTM(params=bi_lstm_params_3)
+
+    # char_lstm_params = {
+    #     'num_layers':2,
+    #     'hidden_size':128,
+    #     'batch_size':32,
+    #     'lr':0.001,
+    #     'epochs':100,
+    #     'model_path':{
+    #         'olid-train':f'{res.folder}/model_2_olid.model',
+    #         'olid-solid-pred-train':f'{res.folder}/model_2_solid_pred.model',
+    #         'olid-solid-acc-train':f'{res.folder}/model_2_solid_acc.model'
+    #     },
+    #     'vocab_path':{
+    #         'olid-train':f'{res.folder}/vocab_2_olid.json',
+    #         'olid-solid-pred-train':f'{res.folder}/vocab_2_solid_pred.json',
+    #         'olid-solid-acc-train':f'{res.folder}/vocab_2_solid_acc.json'
+    #     },
+    #     'max_len_path':{
+    #         'olid-train':f'{res.folder}/max_2_olid.json',
+    #         'olid-solid-pred-train':f'{res.folder}/max_2_solid_pred.json',
+    #         'olid-solid-acc-train':f'{res.folder}/max_2_solid_acc.json'
+    #     },
+    #     'results':{
+    #         'olid-train-olid-test':None,
+    #         'olid-train-solid-test':None,
+    #         'olid-solid-pred-train-olid-test':None,
+    #         'olid-solid-pred-train-solid-test':None,
+    #         'olid-solid-acc-train-olid-test':None,
+    #         'olid-solid-acc-train-solid-test':None
+    #     },
+    #     'graphs':{
+    #         'olid-train':{},
+    #         'olid-solid-pred-train':{},
+    #         'olid-solid-acc-train':{}
+    #     },
+    #     'graph_path':f'{res.folder}/model_2_graphs.json',
+    #     'results_path':f'{res.folder}/model_2_results.json'
+    # }
+    # char_lstm = CharacterLSTM(params=char_lstm_params)
+
+    # logit_reg_params = {
+    #     'batch_size':32,
+    #     'lr':0.01,
+    #     'epochs':100,
+    #     'model_path':{
+    #         'olid-train':f'{res.folder}/model_3_olid.model',
+    #         'olid-solid-pred-train':f'{res.folder}/model_3_solid_pred.model',
+    #         'olid-solid-acc-train':f'{res.folder}/model_3_solid_acc.model'
+    #     },
+    #     'vectorizer_path':{
+    #         'olid-train':f'{res.folder}/vec_3_olid.json',
+    #         'olid-solid-pred-train':f'{res.folder}/vec_3_solid_pred.json',
+    #         'olid-solid-acc-train':f'{res.folder}/vec_3_solid_acc.json'
+    #     },
+    #     'results':{
+    #         'olid-train-olid-test':None,
+    #         'olid-train-solid-test':None,
+    #         'olid-solid-pred-train-olid-test':None,
+    #         'olid-solid-pred-train-solid-test':None,
+    #         'olid-solid-acc-train-olid-test':None,
+    #         'olid-solid-acc-train-solid-test':None
+    #     },
+    #     'graphs':{
+    #         'olid-train':{},
+    #         'olid-solid-pred-train':{},
+    #         'olid-solid-acc-train':{}
+    #     },
+    #     'graph_path':f'{res.folder}/model_3_graphs.json',
+    #     'results_path':f'{res.folder}/model_3_results.json'        
+    # }
+    # logit_reg = LogisticRegressor(params=logit_reg_params)
 
     ensemble_models = {
         'olid-train':{
@@ -215,7 +310,7 @@ if __name__ == "__main__":
         },
     }
 
-    models = [bi_lstm, char_lstm, logit_reg]
+    models = [bi_lstm, bi_lstm_2, bi_lstm_3]
 
     # train and test all the models on OLID and SOLID test sets
     print('*'*40)
@@ -247,10 +342,18 @@ if __name__ == "__main__":
         results, _ = model.test_model(experiment='olid-train',
                                       test_x=OLID_test_tweets,
                                       test_y=OLID_test_labels)
+
         model.params['results']['olid-train-olid-test'] = results
+        model.params['graphs']['olid-train']['train_loss'] = model.train_loss
+        model.params['graphs']['olid-train']['val_loss'] = model.val_loss
+        model.params['graphs']['olid-train']['train_acc'] = model.train_acc
+        model.params['graphs']['olid-train']['val_acc'] = model.val_acc
+        model.reset_losses()
+
         print('='*40)
         print()
     
+    save_model_graphs(models)
     save_model_results(models)
     
     # test each model on SOLID
@@ -288,7 +391,8 @@ if __name__ == "__main__":
         _, pred = model.test_model(experiment='olid-train',
                                    test_x=solid_train_x,
                                    test_y=solid_train_y)
-        preds.append(pred)
+        preds.append(pred.squeeze())
+
     preds = torch.vstack(preds)
     votes = torch.sum(preds,axis=0)
     labels = []
@@ -297,7 +401,7 @@ if __name__ == "__main__":
         labels.append(label)
 
     # train each classifier using new data and test on OLID
-    for i,models in enumerate(models):
+    for i,model in enumerate(models):
         print('='*40)
         print(f'model {i+1}')
         pp = Preprocessor()
@@ -330,9 +434,15 @@ if __name__ == "__main__":
                                       test_x=OLID_test_tweets,
                                       test_y=OLID_test_labels)
         model.params['results']['olid-solid-pred-train-olid-test'] = results
+        model.params['graphs']['olid-solid-pred-train']['train_loss'] = model.train_loss
+        model.params['graphs']['olid-solid-pred-train']['val_loss'] = model.val_loss
+        model.params['graphs']['olid-solid-pred-train']['train_acc'] = model.train_acc
+        model.params['graphs']['olid-solid-pred-train']['val_acc'] = model.val_acc
+        model.reset_losses()
         print('='*40)
         print()        
     
+    save_model_graphs(models)
     save_model_results(models)
     
     # test SOLID test sets
@@ -384,9 +494,15 @@ if __name__ == "__main__":
                                       test_x=OLID_test_tweets,
                                       test_y=OLID_test_labels)
         model.params['results']['olid-solid-acc-train-olid-test'] = results
+        model.params['graphs']['olid-solid-acc-train']['train_loss'] = model.train_loss
+        model.params['graphs']['olid-solid-acc-train']['val_loss'] = model.val_loss
+        model.params['graphs']['olid-solid-acc-train']['train_acc'] = model.train_acc
+        model.params['graphs']['olid-solid-acc-train']['val_acc'] = model.val_acc
+        model.reset_losses()
         print('='*40)
         print()        
-    
+        
+    save_model_graphs(models)
     save_model_results(models)
 
     # test SOLID test sets

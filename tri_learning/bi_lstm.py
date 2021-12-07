@@ -21,6 +21,7 @@ from tri_learning.models.model import Model
 
 class BiLSTM(Model):
     def __init__(self, params):
+        super().__init__(params)
         self.params = params
 
     def get_dataloader(self,tweets, labels, wordtoidx, batch_size):
@@ -62,7 +63,7 @@ class BiLSTM(Model):
                                          batch_size=self.params['batch_size'])
 
         optimizer = Adam(model.parameters(), lr=self.params['lr'])
-        loss_fn = nn.BCELoss(reduction='sum')
+        loss_fn = nn.BCELoss()
         sched = ExponentialLR(optimizer, gamma=0.95)
         
         f1_scores = []

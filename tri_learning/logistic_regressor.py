@@ -22,6 +22,7 @@ import pickle
 
 class LogisticRegressor(Model):
     def __init__(self, params):
+        super().__init__(params)
         self.params = params
 
     def gen_labels(self,labels):

@@ -12,7 +12,19 @@ from sklearn.metrics import classification_report
 class Model(ABC):
     def __init__(self, params):
         self.params = params
+        self.train_loss = []
+        self.val_loss = []
+
+        self.train_acc = []
+        self.val_acc = []
     
+    def reset_losses(self):
+        self.train_loss = []
+        self.val_loss = []
+
+        self.train_acc = []
+        self.val_acc = []   
+
     def save_model(self,model, model_path):
         directory_path = "/".join(model_path.split("/")[:-1])
         if len(directory_path) > 0:
@@ -21,12 +33,12 @@ class Model(ABC):
 
         torch.save(model.state_dict(), model_path)
 
-    def load_model(self,model, model_path):
+    def load_model(self,model, model_path, flag=True):
         try:
             if not os.path.exists(model_path):
                 return model
 
-            model.load_state_dict(torch.load(model_path))
+            model.load_state_dict(torch.load(model_path), strict=flag)
             return model
         except Exception as e:
             traceback.print_exc(e)
@@ -56,15 +68,25 @@ class Model(ABC):
     
     def train(self,dataloader, model, loss_fn, optimizer):
         size = len(dataloader.dataset)
+        num_batches = len(dataloader)
         model.train()
+        train_loss, train_correct = 0,0
         for batch, (x,y) in enumerate(dataloader):
             x, y = x.cuda(), y.float().cuda()
             pred = model(x).cuda()
             loss = loss_fn(pred,y)
 
+            train_loss += loss.item()
+            train_correct += (torch.round(pred)==y).float().sum().item()
+
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
+
+        train_loss /= num_batches
+        train_correct /= size
+        self.train_loss.append(train_loss)
+        self.train_acc.append(train_correct)
 
     def validation(self,dataloader, model, loss_fn, f1_scores):
         size = len(dataloader.dataset)
@@ -84,6 +106,8 @@ class Model(ABC):
 
         test_loss /= num_batches
         correct /= size
+        self.val_loss.append(test_loss)
+        self.val_acc.append(correct)
 
         results = classification_report(y_true=targets.cpu(), y_pred=preds.cpu(), output_dict=True, digits=4)
         print('-'*40)

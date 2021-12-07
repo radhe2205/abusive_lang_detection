@@ -20,6 +20,7 @@ from tri_learning.models.model import Model
 
 class CharacterLSTM(Model):
     def __init__(self, params):
+        super().__init__(params)
         self.params = params
 
     def gen_data(self,tweets, stoi, max_len):
@@ -60,10 +61,10 @@ class CharacterLSTM(Model):
 
         max_len = list(map(lambda t: len(t), train_x))
         max_len = round(np.mean(max_len) + 1.5*np.std(max_len))
- 
+        
         self.save_vocab(stoi, self.params['vocab_path'][experiment])
         self.save_max_len(max_len, self.params['max_len_path'][experiment])
-
+        
         train_x = self.gen_data(train_x, stoi, max_len)
         train_y = self.gen_labels(train_y)
         val_x = self.gen_data(val_x, stoi, max_len)
