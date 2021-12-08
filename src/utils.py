@@ -129,7 +129,7 @@ def format_tri_learning_results(folder):
 def plot_curves(folder):
     path = f'saved_models/{folder}'
     experiments = ['olid-train', 'olid-solid-pred-train', 'olid-solid-acc-train']
-    for i in range(3):
+    for i,name in zip(range(3),['BiLSTM', 'CharLSTM', 'LogitRegression']):
         with open(f'{path}/model_{i+1}_graphs.json') as f:
             results = f.read()
             results = json.loads(results)
@@ -143,6 +143,7 @@ def plot_curves(folder):
             axs[j].set_title(e)
             axs[j].legend(loc='upper left')
         
+        fig.suptitle(name)
         fig.tight_layout()
         plt.savefig(f'graphs/model_{i}_graphs.png')
 
