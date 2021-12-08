@@ -1,5 +1,5 @@
-import os
 import json
+import os
 import sys
 import argparse
 
@@ -147,6 +147,7 @@ if __name__ == "__main__":
     
     itos = {i:s for i,s in enumerate(sorted(set(text)))}
     itos['<unk>'] = len(itos)
+    itos['<pad>'] = len(itos)
     stoi = {s:i for i,s in enumerate(sorted(set(text)))}
 
     training_set = torch.Tensor([stoi[x] for x in text]).type(torch.LongTensor).cuda()

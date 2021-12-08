@@ -28,18 +28,17 @@ class TransferLSTM(nn.Module):
         self.hidden_size_2 = hidden_size_2
         self.out_dim = out_dim
         
-        self.embedding = nn.Embedding(in_dim, d)
+        self.embedding = nn.Embedding(in_dim, d, padding_idx=-1)
 
         self.lstm = nn.LSTM(input_size=d, hidden_size=hidden_size, num_layers=num_layers, batch_first=True)
         self.lstm_top = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size_2, num_layers=1, bidirectional=True, batch_first=True)
         self.linear_layer = nn.Sequential(
-            nn.BatchNorm1d(hidden_size*2),
             nn.Linear(2*hidden_size_2, out_dim),
             nn.Sigmoid()
         )
 
     def forward(self, input_seq):
-        print(input_seq)
+        input_seq[input_seq==-1] = self.embedding.padding_idx
         embedding = self.embedding(input_seq)
         o, hidden_state = self.lstm(embedding)
         o, hidden_state = self.lstm_top(o)
@@ -59,8 +58,9 @@ class TransferLearningModel(Model):
     def get_all_words_from_train(self,tweets):
         text = []
         for tweet in tweets: text.extend(tweet.split(' '))
-        wordtoidx = {i:s for i,s in enumerate(sorted(set(text)))}
+        wordtoidx = {s:i for i,s in enumerate(sorted(set(text)))}
         wordtoidx['<unk>'] = len(wordtoidx)
+        wordtoidx['<pad>'] = -1
         return wordtoidx
     
     def train_model(self,train_x,train_y,val_x,val_y):
@@ -89,7 +89,13 @@ class TransferLearningModel(Model):
                                          wordtoidx=wordtoidx, 
                                          batch_size=32)
 
-        optimizer = Adam(model.parameters(), lr=0.001)
+        optimizer = Adam([
+            {'params':model.lstm.parameters(), 'lr':0.00001},
+            {'params':model.embedding.parameters(), 'lr':0.00001},
+            {'params':model.lstm_top.parameters(), 'lr':0.01},
+            {'params':model.linear_layer.parameters(), 'lr':0.01}
+        ],
+        lr=5e-8)
         loss_fn = nn.BCELoss()
         sched = ExponentialLR(optimizer, gamma=0.95)
         
