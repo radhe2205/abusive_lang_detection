@@ -5,6 +5,9 @@ import json
 import sys
 
 import torch
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 
 def change_path_to_absolute(train_options):
     train_options["embedding_path"] = train_options["embedding_path"].format(dims=train_options["embedding_dim"])
@@ -123,5 +126,25 @@ def format_tri_learning_results(folder):
     print(f'olid f1: {olid_res["f1-score:"]} acc: {olid_res["accuracy"]}')
     print(f'solid f1: {solid_res["f1-score:"]} acc: {solid_res["accuracy"]}')
 
+def plot_curves(folder):
+    path = f'saved_models/{folder}'
+    experiments = ['olid-train', 'olid-solid-pred-train', 'olid-solid-acc-train']
+    for i in range(3):
+        with open(f'{path}/model_{i+1}_graphs.json') as f:
+            results = f.read()
+            results = json.loads(results)
+
+        fig, axs = plt.subplots(3,1, figsize=(15,8))
+        for i,e in enumerate(experiments):
+            axs[i].plot(results[e]['train_loss'], label='train')
+            axs[i].plot(results[e]['val_loss'], label='dev')
+            axs[i].set_ylabel('loss')
+            axs[i].set_xlabel('epoch')
+            axs[i].set_title(e)
+            axs[i].legend(loc='upper left')
+        
+        fig.tight_layout()
+        plt.savefig(f'graphs/model_{i}_graphs.png')
+
 if __name__ == "__main__":
-    format_tri_learning_results(folder=sys.argv[1])
+    plot_curves(folder=sys.argv[1])
