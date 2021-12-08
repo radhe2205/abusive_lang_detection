@@ -135,13 +135,13 @@ def plot_curves(folder):
             results = json.loads(results)
 
         fig, axs = plt.subplots(3,1, figsize=(15,8))
-        for i,e in enumerate(experiments):
-            axs[i].plot(results[e]['train_loss'], label='train')
-            axs[i].plot(results[e]['val_loss'], label='dev')
-            axs[i].set_ylabel('loss')
-            axs[i].set_xlabel('epoch')
-            axs[i].set_title(e)
-            axs[i].legend(loc='upper left')
+        for j,e in enumerate(experiments):
+            axs[j].plot(results[e]['train_loss'], label='train')
+            axs[j].plot(results[e]['val_loss'], label='dev')
+            axs[j].set_ylabel('loss')
+            axs[j].set_xlabel('epoch')
+            axs[j].set_title(e)
+            axs[j].legend(loc='upper left')
         
         fig.tight_layout()
         plt.savefig(f'graphs/model_{i}_graphs.png')
