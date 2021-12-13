@@ -30,10 +30,10 @@ class CatTransferLSTM(nn.Module):
         self.embeddings = embeddings
 
         self.rnn = nn.LSTM(input_size=in_dim, hidden_size=hidden_size, num_layers=num_layers, batch_first=True, bidirectional=True, dropout=0.5)
-
+        self.lstm = nn.LSTM(input_size=hidden_size*2, hidden_size=32, num_layers=1, batch_first=True, bidirectional=True)
         self.linear_layers_new = nn.Sequential(
-            nn.BatchNorm1d(self.hidden_size * 2),
-            nn.Linear(self.hidden_size * 2, self.hidden_size * 2),
+            nn.BatchNorm1d(32 * 2),
+            nn.Linear(32 * 2, self.out_dim),
             nn.Sigmoid()
         )
 
@@ -46,7 +46,8 @@ class CatTransferLSTM(nn.Module):
     def forward(self, samples):
         word_embs = self.embeddings.get_embeddings(samples)
         o, (h,c) = self.rnn(word_embs)
-        o = torch.cat((o[:,-1,:self.hidden_size], o[:, 0, self.hidden_size:]), dim=-1)
+        o, (h,c) = self.lstm(o)
+        o = torch.cat((o[:,-1,:32], o[:, 0, 32:]), dim=-1)
         return self.linear_layers_new(o)
 
 class CatLSTMTransferModel(Model):
@@ -69,7 +70,7 @@ class CatLSTMTransferModel(Model):
         return embedding, wordtoidx
     
     def train_model(self,train_x,train_y,val_x,val_y):
-        wordtoidx, embedding = self.load_embeddings_n_words(tweets=train_x, 
+        embedding, wordtoidx = self.load_embeddings_n_words(tweets=train_x, 
                                                             embedding_path=self.params['embedding_path'], 
                                                             embedding_dim=self.params['embedding_dim'])
 
@@ -93,9 +94,10 @@ class CatLSTMTransferModel(Model):
 
         optimizer = Adam(model.parameters(), lr=self.params['lr'])
         optimizer = Adam([
-            {'params':model.lstm.parameters(), 'lr':0.00001},
-            {'params':model.embedding.parameters(), 'lr':0.00001},
-            {'params':model.linear_layer_new.parameters(), 'lr':0.01}
+            {'params':model.rnn.parameters(), 'lr':0.00001},
+            {'params':model.embeddings.parameters(), 'lr':0.00001},
+            {'params':model.linear_layers_new.parameters(), 'lr':0.01},
+            {'params':model.lstm.parameters(), 'lr':0.01}
         ],
         lr=5e-8)
         
@@ -120,7 +122,7 @@ class CatLSTMTransferModel(Model):
             print()
 
     def test_model(self,test_x,test_y):
-        wordtoidx, embedding = self.load_embeddings_n_words(tweets=test_x, 
+        embedding, wordtoidx = self.load_embeddings_n_words(tweets=test_x, 
                                                             embedding_path=self.params['embedding_path'], 
                                                             embedding_dim=self.params['embedding_dim'])
 
@@ -157,7 +159,7 @@ if __name__ == "__main__":
         'num_layers':2,
         'hidden_size':256,
         'batch_size':32,
-        'lr':0.0001,
+        'lr':0.01,
         'epochs':100,
         'task':'a',
         'out_dim':1
