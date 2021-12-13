@@ -25,7 +25,8 @@ class TweetDataset(nn.Module):
                 self.tweets[idx, word_idx] = wordtoidx[word]
             self.labels[idx] = label_idx[label]
 
-        self.labels = self.labels.unsqueeze(1)
+        if len(label_idx.keys()) <= 2:
+            self.labels = self.labels.unsqueeze(1)
 
     def __len__(self):
         return self.labels.shape[0]

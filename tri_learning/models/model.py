@@ -72,12 +72,20 @@ class Model(ABC):
         model.train()
         train_loss, train_correct = 0,0
         for batch, (x,y) in enumerate(dataloader):
-            x, y = x.cuda(), y.float().cuda()
+            if self.params['task'] == 'c':
+                x, y = x.cuda(), y.cuda()
+            else:
+                x, y = x.cuda(), y.float().cuda()
             pred = model(x).cuda()
             loss = loss_fn(pred,y)
-
+            
             train_loss += loss.item()
-            train_correct += (torch.round(pred)==y).float().sum().item()
+
+            if len(pred.shape) == 1:
+                train_correct += (torch.round(pred)==y).float().sum().item()
+            else:
+                m = nn.Softmax(dim=0)
+                train_correct += (y==m(pred).argmax(dim = -1)).float().sum().item()
 
             optimizer.zero_grad()
             loss.backward()
@@ -97,12 +105,22 @@ class Model(ABC):
         targets = torch.zeros(0).cuda()
         with torch.no_grad():
             for x,y in dataloader:
-                x, y = x.cuda(), y.float().cuda()
+                if self.params['task'] == 'c':
+                    x, y = x.cuda(), y.cuda()
+                else:
+                    x, y = x.cuda(), y.float().cuda()
                 pred = model(x).cuda()
                 test_loss += loss_fn(pred,y).item()
-                correct += (torch.round(pred)==y).type(torch.float).sum().item()
-                preds = torch.cat((preds,torch.round(pred)), dim=0)
-                targets = torch.cat((targets,y), dim=0)
+
+                if len(pred.shape) == 1:
+                    correct += (torch.round(pred)==y).type(torch.float).sum().item()
+                    preds = torch.cat((preds,torch.round(pred)), dim=0)
+                    targets = torch.cat((targets,y), dim=0)
+                else:
+                    m = nn.Softmax(dim=0)
+                    correct += (y==m(pred).argmax(dim = -1)).float().sum().item()
+                    preds = torch.cat((preds,m(pred).argmax(dim = -1)), dim=0)
+                    targets = torch.cat((targets,y), dim=0)                    
 
         test_loss /= num_batches
         correct /= size
@@ -128,11 +146,21 @@ class Model(ABC):
         targets = torch.zeros(0).cuda()
         with torch.no_grad():
             for x,y in dataloader:
-                x, y = x.cuda(), y.float().cuda()
+                if self.params['task'] == 'c':
+                    x, y = x.cuda(), y.cuda()
+                else:
+                    x, y = x.cuda(), y.float().cuda()
                 pred = model(x).cuda()
-                correct += (torch.round(pred)==y).type(torch.float).sum().item()
-                preds = torch.cat((preds,torch.round(pred)), dim=0)
-                targets = torch.cat((targets,y), dim=0)
+
+                if len(pred.shape) == 1:
+                    correct += (torch.round(pred)==y).type(torch.float).sum().item()
+                    preds = torch.cat((preds,torch.round(pred)), dim=0)
+                    targets = torch.cat((targets,y), dim=0)
+                else:
+                    m = nn.Softmax(dim=0)
+                    correct += (y==m(pred).argmax(dim = -1)).float().sum().item()
+                    preds = torch.cat((preds,m(pred).argmax(dim = -1)), dim=0)
+                    targets = torch.cat((targets,y), dim=0)   
 
         correct /= size
 
