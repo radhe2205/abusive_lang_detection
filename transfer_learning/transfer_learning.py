@@ -97,7 +97,7 @@ class TransferLearningModel(Model):
             {'params':model.linear_layer.parameters(), 'lr':0.01}
         ],
         lr=5e-8)
-        loss_fn = nn.CrossEntropyLoss()
+        loss_fn = nn.CrossEntropyLoss() if self.params['task'] == 'c' else nn.BCELoss()
         sched = ExponentialLR(optimizer, gamma=0.95)
         
         f1_scores = []

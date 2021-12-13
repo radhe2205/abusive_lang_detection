@@ -32,7 +32,23 @@ class CatLSTM(nn.Module):
         self.rnn = nn.LSTM(input_size=in_dim, hidden_size=hidden_size, num_layers=num_layers, batch_first=True, bidirectional=True, dropout=0.5)
 
         self.linear_layers = nn.Sequential(
-            nn.Linear(self.hidden_size * 2, out_dim)
+            nn.BatchNorm1d(self.hidden_size * 2),
+            nn.Linear(self.hidden_size * 2, self.hidden_size * 2),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+
+            nn.BatchNorm1d(self.hidden_size * 2),
+            nn.Linear(self.hidden_size * 2, 256),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+
+            nn.BatchNorm1d(256),
+            nn.Linear(256, 128),
+            nn.ReLU(),
+            nn.Dropout(0.5),
+
+            nn.BatchNorm1d(128),
+            nn.Linear(128, self.out_dim)
         )
 
         # Weight Initialization
@@ -91,7 +107,7 @@ class CatLSTMModel(Model):
                                          batch_size=self.params['batch_size'])
 
         optimizer = Adam(model.parameters(), lr=self.params['lr'])
-        loss_fn = nn.CrossEntropyLoss()
+        loss_fn = nn.CrossEntropyLoss() if self.params['task'] == 'c' else nn.BCELoss()
         sched = ExponentialLR(optimizer, gamma=0.95)
         
         f1_scores = []
@@ -147,10 +163,10 @@ if __name__ == "__main__":
         'vocab_path':'model_vocab_cat.json',
         'embedding_path':'data/glove822/glove.6B.300d.txt',
         'embedding_dim':300,
-        'num_layers':4,
+        'num_layers':2,
         'hidden_size':256,
         'batch_size':32,
-        'lr':0.00001,
+        'lr':0.0001,
         'epochs':100,
         'task':'c'
     }
