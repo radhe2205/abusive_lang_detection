@@ -34,7 +34,6 @@ class TransferLSTM(nn.Module):
         self.lstm_top = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size_2, num_layers=1, bidirectional=True, batch_first=True)
         self.linear_layer = nn.Sequential(
             nn.Linear(2*hidden_size_2, out_dim),
-            nn.Sigmoid()
         )
 
     def forward(self, input_seq):
@@ -56,12 +55,14 @@ class TransferLearningModel(Model):
         return DataLoader(dataset = dataset, shuffle=False, batch_size = batch_size)
 
     def get_all_words_from_train(self,tweets):
-        text = []
-        for tweet in tweets: text.extend(tweet.split(' '))
-        wordtoidx = {s:i for i,s in enumerate(sorted(set(text)))}
-        wordtoidx['<unk>'] = len(wordtoidx)
-        wordtoidx['<pad>'] = -1
+        wordtoidx = self.load_saved_vocab(self.params['vocab_path'])
         return wordtoidx
+        # text = []
+        # for tweet in tweets: text.extend(tweet.split(' '))
+        # wordtoidx = {s:i for i,s in enumerate(sorted(set(text)))}
+        # wordtoidx['<unk>'] = len(wordtoidx)
+        # wordtoidx['<pad>'] = -1
+        # return wordtoidx
     
     def train_model(self,train_x,train_y,val_x,val_y):
         wordtoidx = self.get_all_words_from_train(np.concatenate((train_x,val_x)))
@@ -69,7 +70,7 @@ class TransferLearningModel(Model):
         self.save_vocab(wordtoidx, self.params['vocab_path'])
 
         model = TransferLSTM(in_dim=len(wordtoidx),
-                            out_dim=1,
+                            out_dim=3,
                             num_layers=2,
                             hidden_size=256,
                             hidden_size_2=32).cuda()
@@ -96,7 +97,7 @@ class TransferLearningModel(Model):
             {'params':model.linear_layer.parameters(), 'lr':0.01}
         ],
         lr=5e-8)
-        loss_fn = nn.BCELoss()
+        loss_fn = nn.CrossEntropyLoss()
         sched = ExponentialLR(optimizer, gamma=0.95)
         
         f1_scores = []
@@ -120,7 +121,7 @@ class TransferLearningModel(Model):
         wordtoidx = self.load_saved_vocab(self.params['vocab_path'])
 
         model = TransferLSTM(in_dim=len(wordtoidx),
-                            out_dim=1,
+                            out_dim=3,
                             num_layers=2,
                             hidden_size=256,
                             hidden_size_2=32).cuda()
@@ -138,21 +139,23 @@ class TransferLearningModel(Model):
 if __name__ == "__main__":
     train_options = {
         "train_data_path": "data/OLIDv1.0/olid-training-v1.0_clean.tsv",
-        "test_tweet_path": "data/OLIDv1.0/testset-levela_clean.tsv",
-        "test_label_path": "data/OLIDv1.0/labels-levela.csv",
+        "test_tweet_path": "data/OLIDv1.0/testset-levelc_clean.tsv",
+        "test_label_path": "data/OLIDv1.0/labels-levelc.csv",
         "sample_size":1,
         "seed":1
     }   
     params = {
         'model_pretrain_path':'model.pth',
         'model_path':'model_trained.pth',
-        'vocab_path':'model_vocab.json'
+        'vocab_path':'model_vocab.json',
+        'task':'c'
     }
 
     model = TransferLearningModel(params=params)
     
     pp = Preprocessor()
     OLID_train_tweets, OLID_train_labels = pp.get_train_data(train_options["train_data_path"], 
+                                                             task='subtask_c',
                                                                 sample=train_options['sample_size'],
                                                                 seed=train_options['seed'])
     OLID_train_tweets, OLID_val_tweets, OLID_train_labels, OLID_val_labels = train_test_split(OLID_train_tweets,
