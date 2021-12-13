@@ -15,14 +15,14 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import ExponentialLR
 from preprocessing import Preprocessor
 from src.models.embedding import GloveEmbedding
-from tri_learning.datasets.tweet_dataset import TweetDataset
-from tri_learning.models.model import Model 
+from src.tweet_dataset import TweetDataset
+from model import Model 
 from sklearn.model_selection import train_test_split
 from collections import Counter
 
-class CatLSTM(nn.Module):
+class CatTransferLSTM(nn.Module):
     def __init__(self, embeddings, in_dim, num_layers = 1, hidden_size = 100, out_dim = 1):
-        super(CatLSTM, self).__init__()
+        super(CatTransferLSTM, self).__init__()
         self.num_layers = num_layers
         self.hidden_size = hidden_size
         self.out_dim = out_dim
@@ -31,28 +31,14 @@ class CatLSTM(nn.Module):
 
         self.rnn = nn.LSTM(input_size=in_dim, hidden_size=hidden_size, num_layers=num_layers, batch_first=True, bidirectional=True, dropout=0.5)
 
-        self.linear_layers = nn.Sequential(
+        self.linear_layers_new = nn.Sequential(
             nn.BatchNorm1d(self.hidden_size * 2),
             nn.Linear(self.hidden_size * 2, self.hidden_size * 2),
-            nn.ReLU(),
-            nn.Dropout(0.5),
-
-            nn.BatchNorm1d(self.hidden_size * 2),
-            nn.Linear(self.hidden_size * 2, 256),
-            nn.ReLU(),
-            nn.Dropout(0.5),
-
-            nn.BatchNorm1d(256),
-            nn.Linear(256, 128),
-            nn.ReLU(),
-            nn.Dropout(0.5),
-
-            nn.BatchNorm1d(128),
-            nn.Linear(128, self.out_dim)
+            nn.Sigmoid()
         )
 
         # Weight Initialization
-        for layer in self.linear_layers:
+        for layer in self.linear_layers_new:
             if type(layer) == nn.Linear:
                 torch.nn.init.xavier_normal_(layer.weight.data)
 
@@ -61,37 +47,9 @@ class CatLSTM(nn.Module):
         word_embs = self.embeddings.get_embeddings(samples)
         o, (h,c) = self.rnn(word_embs)
         o = torch.cat((o[:,-1,:self.hidden_size], o[:, 0, self.hidden_size:]), dim=-1)
-        return self.linear_layers(o).squeeze()
+        return self.linear_layers_new(o)
 
-class CatLSTM(nn.Module):
-    def __init__(self, embeddings, in_dim, num_layers = 1, hidden_size = 100, out_dim = 1):
-        super(CatLSTM, self).__init__()
-        self.num_layers = num_layers
-        self.hidden_size = hidden_size
-        self.out_dim = out_dim
-
-        self.embeddings = embeddings
-
-        self.rnn = nn.LSTM(input_size=in_dim, hidden_size=hidden_size, num_layers=num_layers, batch_first=True, bidirectional=True, dropout=0.5)
-
-        self.linear_layers = nn.Sequential(
-            nn.BatchNorm1d(self.hidden_size * 2),
-            nn.Linear(self.hidden_size * 2, self.out_dim),
-        )
-
-        # Weight Initialization
-        for layer in self.linear_layers:
-            if type(layer) == nn.Linear:
-                torch.nn.init.xavier_normal_(layer.weight.data)
-
-    # number of words in tweet are limited, will use padded fixed length sequence.
-    def forward(self, samples):
-        word_embs = self.embeddings.get_embeddings(samples)
-        o, (h,c) = self.rnn(word_embs)
-        o = torch.cat((o[:,-1,:self.hidden_size], o[:, 0, self.hidden_size:]), dim=-1)
-        return self.linear_layers(o)
-
-class CatLSTMModel(Model):
+class CatLSTMTransferModel(Model):
     def __init__(self, params):
         super().__init__(params)
         self.params = params
@@ -101,10 +59,8 @@ class CatLSTMModel(Model):
         return DataLoader(dataset = dataset, shuffle=False, batch_size = batch_size)
 
     def get_all_words_from_train(self,tweets):
-        pp = Preprocessor()
-        vocab = pp.gen_vocab(sentences=tweets)
-        word_to_idx = pp.gen_word_to_idx(vocab=vocab)
-        return word_to_idx
+        wordtoidx = self.load_saved_vocab(self.params['vocab_path'])
+        return wordtoidx
 
     def load_embeddings_n_words(self,tweets, embedding_path, embedding_type = "glove", embedding_dim = 50):
         wordtoidx = self.get_all_words_from_train(tweets)
@@ -113,16 +69,17 @@ class CatLSTMModel(Model):
         return embedding, wordtoidx
     
     def train_model(self,train_x,train_y,val_x,val_y):
-        embedding, wordtoidx = self.load_embeddings_n_words(tweets=train_x, 
+        wordtoidx, embedding = self.load_embeddings_n_words(tweets=train_x, 
                                                             embedding_path=self.params['embedding_path'], 
                                                             embedding_dim=self.params['embedding_dim'])
-        self.save_vocab(wordtoidx, self.params['vocab_path'])
 
-        model = CatLSTM(embeddings=embedding, 
-                         in_dim=self.params['embedding_dim'],
-                         num_layers=self.params['num_layers'],
-                         hidden_size=self.params['hidden_size'], 
-                         out_dim=self.params['out_dim']).cuda()
+        model = CatTransferLSTM(embeddings=embedding, 
+                                in_dim=self.params['embedding_dim'],
+                                num_layers=self.params['num_layers'],
+                                hidden_size=self.params['hidden_size'], 
+                                out_dim=self.params['out_dim']).cuda()
+
+        self.load_model(model, self.params['model_pretrain_path'], flag=False)
 
         train_loader = self.get_dataloader(tweets=train_x,
                                            labels=train_y, 
@@ -135,6 +92,13 @@ class CatLSTMModel(Model):
                                          batch_size=self.params['batch_size'])
 
         optimizer = Adam(model.parameters(), lr=self.params['lr'])
+        optimizer = Adam([
+            {'params':model.lstm.parameters(), 'lr':0.00001},
+            {'params':model.embedding.parameters(), 'lr':0.00001},
+            {'params':model.linear_layer_new.parameters(), 'lr':0.01}
+        ],
+        lr=5e-8)
+        
         loss_fn = nn.CrossEntropyLoss() if self.params['task'] == 'c' else nn.BCELoss()
         sched = ExponentialLR(optimizer, gamma=0.95)
         
@@ -156,11 +120,9 @@ class CatLSTMModel(Model):
             print()
 
     def test_model(self,test_x,test_y):
-        wordtoidx = self.load_saved_vocab(self.params['vocab_path'])
-        embedding = GloveEmbedding(self.params['embedding_dim'], 
-                                   wordtoidx, 
-                                   self.params['embedding_path'], 
-                                   False)
+        wordtoidx, embedding = self.load_embeddings_n_words(tweets=test_x, 
+                                                            embedding_path=self.params['embedding_path'], 
+                                                            embedding_dim=self.params['embedding_dim'])
 
         model = CatLSTM(embeddings=embedding, 
                          in_dim=self.params['embedding_dim'],
@@ -181,13 +143,14 @@ class CatLSTMModel(Model):
 if __name__ == "__main__":
     train_options = {
         "train_data_path": "data/OLIDv1.0/olid-training-v1.0_clean.tsv",
-        "test_tweet_path": "data/OLIDv1.0/testset-levelc_clean.tsv",
-        "test_label_path": "data/OLIDv1.0/labels-levelc.csv",
+        "test_tweet_path": "data/OLIDv1.0/testset-levela_clean.tsv",
+        "test_label_path": "data/OLIDv1.0/labels-levela.csv",
         "sample_size":1,
         "seed":1
     }   
     params = {
-        'model_path':'model_cat.pth',
+        'model_pretrain_path':'model_cat.pth',
+        'model_path':'model_cat_a.pth',
         'vocab_path':'model_vocab_cat.json',
         'embedding_path':'data/glove822/glove.6B.300d.txt',
         'embedding_dim':300,
@@ -196,37 +159,25 @@ if __name__ == "__main__":
         'batch_size':32,
         'lr':0.0001,
         'epochs':100,
-        'task':'c'
+        'task':'a',
+        'out_dim':1
     }
     
-    data = pd.read_csv(train_options['train_data_path'], sep='\t')
-    data = data[data['tweet'].notna()]
-    print(data.head())
-    tweets = data['tweet'].values
-    labels = data[['subtask_a', 'subtask_b', 'subtask_c']]
-    labels.loc[labels['subtask_b'].isna(), 'subtask_b'] = 'NONE'
-    labels.loc[labels['subtask_c'].isna(), 'subtask_c'] = 'NONE'
-    labels = labels.values
-    labels = [tuple(l) for l in labels]
-    label_keys = {l:i for i,l in enumerate(sorted(set(labels)))}
-    labels = np.array([label_keys[l] for l in labels])
-    print(Counter(labels))
-    params['out_dim'] = len(label_keys)
-    print(labels)
-    print(tweets)
-    train_x, val_x, train_y, val_y = train_test_split(tweets,
-                                                      labels,
-                                                      test_size=0.1,
-                                                      stratify=labels,
-                                                      random_state=0)
+    model = CatLSTMTransferModel(params=params)
 
-    train_x, test_x, train_y, test_y = train_test_split(train_x,
-                                                        train_y,
-                                                        test_size=0.2,
-                                                        stratify=train_y,
-                                                        random_state=0)
+    pp = Preprocessor()
+    OLID_train_tweets, OLID_train_labels = pp.get_train_data(train_options["train_data_path"], 
+                                                             task='subtask_a',
+                                                                sample=train_options['sample_size'],
+                                                                seed=train_options['seed'])
+    OLID_train_tweets, OLID_val_tweets, OLID_train_labels, OLID_val_labels = train_test_split(OLID_train_tweets,
+                                                                                                OLID_train_labels,
+                                                                                                test_size=0.1,
+                                                                                                stratify=OLID_train_labels,
+                                                                                                random_state=1)
+    OLID_test_tweets, OLID_test_labels = pp.get_test_data(train_options['test_tweet_path'],
+                                                            train_options['test_label_path'])
     
-    model = CatLSTMModel(params=params)
-    model.train_model(train_x,train_y,val_x,val_y)
-    results, preds = model.test_model(test_x,test_y)
+    model.train_model(OLID_train_tweets, OLID_train_labels, OLID_val_tweets, OLID_val_labels)
+    results, _ = model.test_model(OLID_test_tweets, OLID_test_labels)
     print(results)
