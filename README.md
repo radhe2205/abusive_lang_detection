@@ -92,7 +92,7 @@ To run the tri-learning file you only need to run the `tri_learner.py` file, thi
 python3 tri_learner.py --folder=saved_models/{folder} --mode=(train,test) --models(grid,diverse)
 ```
 
-Here you should replace `{folder}` with the name of one of the tri-learning folders within `saved_models`.
+Here you should replace `{folder}` with the name of one of the tri-learning folders within `saved_models`. Note that the `best_params` folder contains the grid searched lstm, and the `diverse_trilearn` folder has the diverse trilearning method.
 
 If using the `train` flag you will need to specify either `grid` or `diverse`, these are the only models currently with built dictionaries, however you can reference the `key.txt` file in `saved_models` to change the dictionaries to train and test those models. By default the `test` settings just load in the saved results, since tri-learning takes a very long time. 
 
