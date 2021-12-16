@@ -144,17 +144,22 @@ class CatLSTMTransferModel(Model):
         return results, preds    
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mode', action='store', dest='mode', default='test', type=str)
+    parser.add_argument('--task', action='store', dest='task', default='a', type=str)
+    res = parser.parse_args()
+
     train_options = {
         "train_data_path": "data/OLIDv1.0/olid-training-v1.0_clean.tsv",
-        "test_tweet_path": "data/OLIDv1.0/testset-levelc_clean.tsv",
-        "test_label_path": "data/OLIDv1.0/labels-levelc.csv",
+        "test_tweet_path": f"data/OLIDv1.0/testset-level{res.task}_clean.tsv",
+        "test_label_path": f"data/OLIDv1.0/labels-level{res.task}.csv",
         "sample_size":1,
         "seed":1
     }   
     params = {
-        'model_pretrain_path':'model_cat.pth',
-        'model_path':'model_cat_c.pth',
-        'vocab_path':'model_vocab_cat.json',
+        'model_pretrain_path':'saved_models/model_cat.pth',
+        'model_path':f'saved_models/model_cat_{res.task}.pth',
+        'vocab_path':f'saved_models/model_vocab_cat.json',
         'embedding_path':'data/glove822/glove.6B.300d.txt',
         'embedding_dim':300,
         'num_layers':2,
@@ -162,19 +167,15 @@ if __name__ == "__main__":
         'batch_size':32,
         'lr':0.001,
         'epochs':100,
-        'task':'c',
-        'out_dim':3
+        'task':f'{res.task}',
+        'out_dim':3 if res.task == 'c' else 1
     }
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--mode', action='store', dest='mode', default='test', type=str)
-    res = parser.parse_args()
 
     model = CatLSTMTransferModel(params=params)
 
     pp = Preprocessor()
     OLID_train_tweets, OLID_train_labels = pp.get_train_data(train_options["train_data_path"], 
-                                                             task='subtask_c',
+                                                                task=f'subtask_{res.task}',
                                                                 sample=train_options['sample_size'],
                                                                 seed=train_options['seed'])
     OLID_train_tweets, OLID_val_tweets, OLID_train_labels, OLID_val_labels = train_test_split(OLID_train_tweets,

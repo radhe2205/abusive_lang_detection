@@ -146,8 +146,8 @@ if __name__ == "__main__":
         "seed":1
     }   
     params = {
-        'model_path':'model_cat.pth',
-        'vocab_path':'model_vocab_cat.json',
+        'model_path':'saved_models/model_cat.pth',
+        'vocab_path':'saved_models/model_vocab_cat.json',
         'embedding_path':'data/glove822/glove.6B.300d.txt',
         'embedding_dim':300,
         'num_layers':2,
