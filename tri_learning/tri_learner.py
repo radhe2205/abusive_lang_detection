@@ -323,7 +323,7 @@ if __name__ == "__main__":
 
     if res.models == 'grid':
         models = [bi_lstm, bi_lstm_2, bi_lstm_3]
-    else:
+    if res.models == 'diverse':
         models = [bi_lstm, char_lstm, logit_reg]
 
 
