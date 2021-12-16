@@ -18,6 +18,8 @@ from tri_learning.models.char_lstm import CharLSTM
 from tri_learning.datasets.char_dataset import CharDataset
 from tri_learning.models.model import Model 
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 class CharacterLSTM(Model):
     def __init__(self, params):
         super().__init__(params)
@@ -79,7 +81,7 @@ class CharacterLSTM(Model):
         model = CharLSTM(input_size=vocab_size, 
                          output_size=1, 
                          hidden_size=self.params['hidden_size'], 
-                         num_layers=self.params['num_layers']).cuda()
+                         num_layers=self.params['num_layers']).to(device)
 
         loss_fn = nn.BCELoss()
         optimizer = Adam(model.parameters(), lr=self.params['lr'])
@@ -111,7 +113,7 @@ class CharacterLSTM(Model):
         model = CharLSTM(input_size=vocab_size, 
                          output_size=1, 
                          hidden_size=self.params['hidden_size'], 
-                         num_layers=self.params['num_layers']).cuda()
+                         num_layers=self.params['num_layers']).to(device)
 
         self.load_model(model, self.params['model_path'][experiment])
 

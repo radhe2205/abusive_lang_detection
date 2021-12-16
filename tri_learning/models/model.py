@@ -17,7 +17,9 @@ class Model(ABC):
 
         self.train_acc = []
         self.val_acc = []
-    
+
+        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
     def reset_losses(self):
         self.train_loss = []
         self.val_loss = []
@@ -73,10 +75,10 @@ class Model(ABC):
         train_loss, train_correct = 0,0
         for batch, (x,y) in enumerate(dataloader):
             if self.params['task'] == 'c':
-                x, y = x.cuda(), y.cuda()
+                x, y = x.to(self.device), y.to(self.device)
             else:
-                x, y = x.cuda(), y.float().cuda()
-            pred = model(x).cuda()
+                x, y = x.to(self.device), y.float().to(self.device)
+            pred = model(x).to(self.device)
             loss = loss_fn(pred,y)
             
             train_loss += loss.item()
@@ -101,15 +103,15 @@ class Model(ABC):
         num_batches = len(dataloader)
         model.eval()
         test_loss, correct = 0,0
-        preds = torch.zeros(0).cuda()
-        targets = torch.zeros(0).cuda()
+        preds = torch.zeros(0).to(self.device)
+        targets = torch.zeros(0).to(self.device)
         with torch.no_grad():
             for x,y in dataloader:
                 if self.params['task'] == 'c':
-                    x, y = x.cuda(), y.cuda()
+                    x, y = x.to(self.device), y.to(self.device)
                 else:
-                    x, y = x.cuda(), y.float().cuda()
-                pred = model(x).cuda()
+                    x, y = x.to(self.device), y.float().to(self.device)
+                pred = model(x).to(self.device)
                 test_loss += loss_fn(pred,y).item()
 
                 if len(pred.shape) == 1:
@@ -142,15 +144,15 @@ class Model(ABC):
         num_batches = len(dataloader)
         model.eval()
         test_loss, correct = 0,0
-        preds = torch.zeros(0).cuda()
-        targets = torch.zeros(0).cuda()
+        preds = torch.zeros(0).to(self.device)
+        targets = torch.zeros(0).to(self.device)
         with torch.no_grad():
             for x,y in dataloader:
                 if self.params['task'] == 'c':
-                    x, y = x.cuda(), y.cuda()
+                    x, y = x.to(self.device), y.to(self.device)
                 else:
-                    x, y = x.cuda(), y.float().cuda()
-                pred = model(x).cuda()
+                    x, y = x.to(self.device), y.float().to(self.device)
+                pred = model(x).to(self.device)
 
                 if len(pred.shape) == 1:
                     correct += (torch.round(pred)==y).type(torch.float).sum().item()

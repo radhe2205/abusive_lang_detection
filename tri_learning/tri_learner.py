@@ -17,12 +17,87 @@ from character_lstm import CharacterLSTM
 from bi_lstm import BiLSTM
 from logistic_regressor import LogisticRegressor
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+def save_model_graphs(models):
+    for i,model in enumerate(models):
+        with open(model.params['graph_path'], "w") as f:
+            f.write(json.dumps(model.params['graphs']))
+
+def save_model_results(models):
+    for i,model in enumerate(models):
+        with open(model.params['results_path'], "w") as f:
+            f.write(json.dumps(model.params['results']))
+
+def load_solid_train(datapath):
+    data = pd.read_csv(datapath, sep='\t')
+    data = data.sample(frac=1).reset_index(drop=True)
+    data = data[data['tweet'].notna()]
+    return data['tweet'].values, data['label'].values
+
+def load_solid_test(datapath, labelpath):
+    data = pd.read_csv(datapath, sep='\t')
+    labels = pd.read_csv(labelpath, names=['id','label'])
+    is_nan = data.isnull()
+    row_has_nan = is_nan.any(axis=1)
+    labels = labels[~row_has_nan]
+    data = data.dropna()
+    return data['tweet'].values, labels['label'].values
+
+def test_ensemble(models,experiment):
+    pp = Preprocessor()
+    SOLID_test_tweets, SOLID_test_labels = load_solid_test(datapath='data/SOLID/test_a_tweets_clean.tsv',
+                                                           labelpath='data/SOLID/test_a_labels.csv')
+    OLID_test_tweets, OLID_test_labels = pp.get_test_data(train_options['test_tweet_path'],
+                                                          train_options['test_label_path'])
+    vote_map = {
+        0:'NOT',
+        1:'NOT',
+        2:'OFF',
+        3:'OFF'
+    }
+    solid_preds = []
+    olid_preds = []
+    for i,model in enumerate(models):
+        _, solid_pred = model.test_model(experiment=experiment,
+                                         test_x=SOLID_test_tweets,
+                                         test_y=SOLID_test_labels)
+        _, olid_pred = model.test_model(experiment=experiment,
+                                        test_x=OLID_test_tweets,
+                                        test_y=OLID_test_labels)
+        solid_preds.append(solid_pred.squeeze())
+        olid_preds.append(olid_pred.squeeze())
+
+    solid_preds = torch.vstack(solid_preds)
+    olid_preds = torch.vstack(olid_preds)
+    solid_votes = torch.sum(solid_preds,axis=0)
+    olid_votes = torch.sum(olid_preds,axis=0)
+    
+    solid_labels = []
+    for s_vote in solid_votes:
+        s_label = vote_map[s_vote.item()]
+        solid_labels.append(s_label)
+    
+    olid_labels = []
+    for o_vote in olid_votes:
+        o_label = vote_map[o_vote.item()]
+        olid_labels.append(o_label)
+    
+    solid_results = classification_report(y_true=SOLID_test_labels, y_pred=solid_labels, output_dict=True, digits=4)
+    solid_correct = np.mean([y_true==y_pred for y_true,y_pred in zip(SOLID_test_labels,solid_labels)])
+    olid_results = classification_report(y_true=OLID_test_labels, y_pred=olid_labels, output_dict=True, digits=4)
+    olid_correct = np.mean([y_true==y_pred for y_true,y_pred in zip(OLID_test_labels,olid_labels)])
+    
+    return {'f1-score:':solid_results["macro avg"]["f1-score"],
+            'accuracy':solid_correct},{'f1-score:':olid_results["macro avg"]["f1-score"],
+            'accuracy':olid_correct}
+
 if __name__ == "__main__":
     train_options = {
         "train_data_path": "data/OLIDv1.0/olid-training-v1.0_clean.tsv",
-        "test_tweet_path": "data/OLIDv1.0/testset-levela_clean.tsv",
-        "test_label_path": "data/OLIDv1.0/labels-levela.csv",
-        "sample_size":0.8,
+        "test_tweet_path": "data/OLIDv1.0/testset-levelb_clean.tsv",
+        "test_label_path": "data/OLIDv1.0/labels-levelb.csv",
+        "sample_size":1,
         "seed":1
     }   
     
@@ -259,9 +334,6 @@ if __name__ == "__main__":
                                                                                                   test_size=0.1,
                                                                                                   stratify=OLID_train_labels,
                                                                                                   random_state=1)
-        #oversample = RandomOverSampler(sampling_strategy='minority')
-        #OLID_train_tweets, OLID_train_labels = oversample.fit_resample(OLID_train_tweets.reshape(-1,1), OLID_train_labels.reshape(-1,1))
-        #OLID_train_tweets = OLID_train_tweets.reshape(-1)
 
         OLID_test_tweets, OLID_test_labels = pp.get_test_data(train_options['test_tweet_path'],
                                                               train_options['test_label_path'])
@@ -344,11 +416,7 @@ if __name__ == "__main__":
                                                                                                   OLID_train_labels,
                                                                                                   test_size=0.1,
                                                                                                   stratify=OLID_train_labels,
-                                                                                                  random_state=1)
-        
-        #oversample = RandomOverSampler(sampling_strategy='minority')
-        #OLID_train_tweets, OLID_train_labels = oversample.fit_resample(OLID_train_tweets.reshape(-1,1), OLID_train_labels.reshape(-1,1))
-        #OLID_train_tweets = OLID_train_tweets.reshape(-1)        
+                                                                                                  random_state=1)      
         
         OLID_test_tweets, OLID_test_labels = pp.get_test_data(train_options['test_tweet_path'],
                                                               train_options['test_label_path'])
@@ -405,10 +473,7 @@ if __name__ == "__main__":
                                                                                                   OLID_train_labels,
                                                                                                   test_size=0.1,
                                                                                                   stratify=OLID_train_labels,
-                                                                                                  random_state=1)
-        #oversample = RandomOverSampler(sampling_strategy='minority')
-        #OLID_train_tweets, OLID_train_labels = oversample.fit_resample(OLID_train_tweets.reshape(-1,1), OLID_train_labels.reshape(-1,1))
-        #OLID_train_tweets = OLID_train_tweets.reshape(-1)       
+                                                                                                  random_state=1)     
         
         OLID_test_tweets, OLID_test_labels = pp.get_test_data(train_options['test_tweet_path'],
                                                               train_options['test_label_path'])

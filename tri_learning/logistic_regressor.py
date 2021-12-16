@@ -20,6 +20,8 @@ from tri_learning.datasets.text_dataset import TextDataset
 from tri_learning.models.model import Model 
 import pickle
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 class LogisticRegressor(Model):
     def __init__(self, params):
         super().__init__(params)
@@ -57,7 +59,7 @@ class LogisticRegressor(Model):
         train_loader = DataLoader(train_dataset, batch_size=self.params['batch_size'])
         val_loader = DataLoader(val_dataset, batch_size=self.params['batch_size'])
         
-        model = LogisticRegressionModel(input_dim=train_x.shape[1]).cuda()
+        model = LogisticRegressionModel(input_dim=train_x.shape[1]).to(device)
         loss_fn = nn.BCELoss()
         optimizer = SGD(model.parameters(), lr=self.params['lr'], momentum=0.9)
         sched = ExponentialLR(optimizer, gamma=0.95)
@@ -88,7 +90,7 @@ class LogisticRegressor(Model):
         test_dataset = TextDataset(test_x, test_y)
         test_loader = DataLoader(test_dataset, batch_size=self.params['batch_size'])
 
-        model = LogisticRegressionModel(input_dim=test_x.shape[1]).cuda()
+        model = LogisticRegressionModel(input_dim=test_x.shape[1]).to(device)
         self.load_model(model, self.params['model_path'][experiment])
 
         results, preds = self.test(test_loader, model)

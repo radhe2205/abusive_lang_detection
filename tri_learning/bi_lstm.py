@@ -19,13 +19,15 @@ from src.models.embedding import GloveEmbedding
 from tri_learning.datasets.tweet_dataset import TweetDataset
 from tri_learning.models.model import Model 
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 class BiLSTM(Model):
     def __init__(self, params):
         super().__init__(params)
         self.params = params
 
     def get_dataloader(self,tweets, labels, wordtoidx, batch_size):
-        dataset = TweetDataset(tweets, labels, wordtoidx).cuda()
+        dataset = TweetDataset(tweets, labels, wordtoidx).to(device)
         return DataLoader(dataset = dataset, shuffle=False, batch_size = batch_size)
 
     def get_all_words_from_train(self,tweets):
@@ -50,7 +52,7 @@ class BiLSTM(Model):
                          in_dim=self.params['embedding_dim'],
                          num_layers=self.params['num_layers'],
                          hidden_size=self.params['hidden_size'], 
-                         out_dim=1).cuda()
+                         out_dim=1).to(device)
 
         train_loader = self.get_dataloader(tweets=train_x,
                                            labels=train_y, 
@@ -94,7 +96,7 @@ class BiLSTM(Model):
                          in_dim=self.params['embedding_dim'],
                          num_layers=self.params['num_layers'],
                          hidden_size=self.params['hidden_size'], 
-                         out_dim=1).cuda()
+                         out_dim=1).to(device)
 
         self.load_model(model, self.params['model_path'][experiment])
 
