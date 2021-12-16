@@ -52,7 +52,7 @@ def load_model(model, model_path):
         print("Error occured while loading, ignoring...")
 
 def format_tri_learning_results(folder):
-    path = f'saved_models/{folder}'
+    path = f'{folder}'
 
     print('olid train')
     for i in range(3):
@@ -129,23 +129,14 @@ def format_tri_learning_results(folder):
 def plot_curves(folder):
     path = f'saved_models/{folder}'
     experiments = ['olid-train', 'olid-solid-pred-train', 'olid-solid-acc-train']
-    for i,name in zip(range(3),['BiLSTM', 'CharLSTM', 'LogitRegression']):
+    for i in range(3):
         with open(f'{path}/model_{i+1}_graphs.json') as f:
             results = f.read()
             results = json.loads(results)
 
         fig, axs = plt.subplots(3,1, figsize=(15,8))
-        for j,e in enumerate(experiments):
-            axs[j].plot(results[e]['train_loss'], label='train')
-            axs[j].plot(results[e]['val_loss'], label='dev')
-            axs[j].set_ylabel('loss')
-            axs[j].set_xlabel('epoch')
-            axs[j].set_title(e)
-            axs[j].legend(loc='upper left')
-        
-        fig.suptitle(name)
-        fig.tight_layout()
-        plt.savefig(f'graphs/model_{i}_graphs.png')
+        for i,e in enumerate(experiments):
+            axs[i].plot(results[e]['train_loss'])
 
 if __name__ == "__main__":
-    plot_curves(folder=sys.argv[1])
+    format_tri_learning_results(folder=sys.argv[1])
