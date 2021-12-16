@@ -387,8 +387,6 @@ def main():
     word_to_idx = pp.gen_word_to_idx(vocab=vocab)
 
 def text_clean_unit_tests():
-
-    #s = "@USER thissssssss is a test, URL That NNEEEEEEEEDS!!!! to be properly cleand. me+you=forever! &gt;&gt;&gt; THE8 worst 99 &lt;&lt; &amp; :) #loSER abc... i'm didn't know you'd be this's compliccated &*(#$)@#$"
     s = "@USER @USER @USER It's not my fault you supported gun control run running ran runs better #Trump"
     pp = Preprocessor()
     
@@ -417,9 +415,4 @@ def text_clean_unit_tests():
     print('laksjdfklsdj')
 
 if __name__ == "__main__":
-    # pp = Preprocessor()
-    # dataset_path = 'data/OLIDv1.0/olid-training-v1.0_clean.tsv'
-    # tweets, labels = pp.get_train_data(dataset_path, 'subtask_a')
-    # _,_ = pp.get_test_data('data/OLIDv1.0/testset-levela_clean.tsv',
-    #                         'data/OLIDv1.0/labels-levela.csv')
     text_clean_unit_tests()
