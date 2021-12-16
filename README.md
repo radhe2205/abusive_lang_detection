@@ -80,7 +80,7 @@ the `train` flag will train, save and generate output from the model, `test` wil
 
 the `--model-path` flag uses `model.pth` as the default so this does not need to be included, unless you want to train a new model. 
 
-the `--temperature` flag should be a floating point value between `1e-10` to `1.0`, the default is `1.0
+the `--temperature` flag should be a floating point value between `1e-10` to `1.0`, the default is `1.0`
 
 To run the transfer learning model use the following flags
 ```
