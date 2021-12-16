@@ -35,7 +35,7 @@ class TransferLSTM(nn.Module):
         self.lstm_top = nn.LSTM(input_size=hidden_size, hidden_size=hidden_size_2, num_layers=1, bidirectional=True, batch_first=True)
         self.linear_layer = nn.Sequential(
             nn.Linear(2*hidden_size_2, out_dim),
-            [nn.Sigmoid, nn.Identity()][out_dim >= 2]
+            (nn.Sigmoid(), nn.Identity())[out_dim >= 2]
         )
 
     def forward(self, input_seq):
@@ -146,9 +146,9 @@ if __name__ == "__main__":
         "seed":1
     }   
     params = {
-        'model_pretrain_path':'model.pth',
-        'model_path':f'model_trained_{res.task}.pth',
-        'vocab_path':'model_vocab.json',
+        'model_pretrain_path':'saved_models/model.pth',
+        'model_path':f'saved_models/model_trained_{res.task}.pth',
+        'vocab_path':'saved_models/model_vocab.json',
         'task':res.task
     }
 
@@ -175,3 +175,4 @@ if __name__ == "__main__":
     if res.mode == 'test':
         results, _ = model.test_model(OLID_test_tweets, OLID_test_labels)
         print(results)       
+        

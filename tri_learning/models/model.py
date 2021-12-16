@@ -86,7 +86,7 @@ class Model(ABC):
             if len(pred.shape) == 1:
                 train_correct += (torch.round(pred)==y).float().sum().item()
             else:
-                m = nn.Softmax(dim=0)
+                m = torch.nn.Softmax(dim=0)
                 train_correct += (y==m(pred).argmax(dim = -1)).float().sum().item()
 
             optimizer.zero_grad()
@@ -119,7 +119,7 @@ class Model(ABC):
                     preds = torch.cat((preds,torch.round(pred)), dim=0)
                     targets = torch.cat((targets,y), dim=0)
                 else:
-                    m = nn.Softmax(dim=0)
+                    m = torch.nn.Softmax(dim=0)
                     correct += (y==m(pred).argmax(dim = -1)).float().sum().item()
                     preds = torch.cat((preds,m(pred).argmax(dim = -1)), dim=0)
                     targets = torch.cat((targets,y), dim=0)                    
@@ -159,7 +159,7 @@ class Model(ABC):
                     preds = torch.cat((preds,torch.round(pred)), dim=0)
                     targets = torch.cat((targets,y), dim=0)
                 else:
-                    m = nn.Softmax(dim=0)
+                    m = torch.nn.Softmax(dim=0)
                     correct += (y==m(pred).argmax(dim = -1)).float().sum().item()
                     preds = torch.cat((preds,m(pred).argmax(dim = -1)), dim=0)
                     targets = torch.cat((targets,y), dim=0)   
@@ -177,3 +177,4 @@ class Model(ABC):
     @abstractmethod
     def test_model(self,experiment,test_x,test_y):
         pass
+    

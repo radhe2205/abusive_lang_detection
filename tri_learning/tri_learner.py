@@ -541,5 +541,6 @@ if __name__ == "__main__":
 
         print('program finished')
         print('saving results')
-    elif res.model == 'test':
+        
+    if res.mode == 'test':
         format_tri_learning_results(res.folder)

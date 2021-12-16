@@ -15,8 +15,8 @@ from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import ExponentialLR
 from preprocessing import Preprocessor
 from src.models.embedding import GloveEmbedding
-from src.tweet_dataset import TweetDataset
-from model import Model 
+from tri_learning.datasets.tweet_dataset import TweetDataset
+from tri_learning.models.model import Model 
 from sklearn.model_selection import train_test_split
 from collections import Counter
 
@@ -34,8 +34,8 @@ class CatTransferLSTM(nn.Module):
         self.rnn = nn.LSTM(input_size=in_dim, hidden_size=hidden_size, num_layers=num_layers, batch_first=True, bidirectional=True, dropout=0.5)
         self.lstm = nn.LSTM(input_size=hidden_size*2, hidden_size=32, num_layers=1, batch_first=True, bidirectional=True)
         self.linear_layers_new = nn.Sequential(
-            nn.Linear(32 * 2, self.out_dim)
-            [nn.Sigmoid(), nn.Identity()][self.out_dim >= 2]
+            nn.Linear(32 * 2, self.out_dim),
+            (nn.Sigmoid(), nn.Identity())[self.out_dim >= 2]
         )
 
         # Weight Initialization

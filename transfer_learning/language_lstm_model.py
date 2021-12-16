@@ -135,7 +135,7 @@ def test_model(training_set, temp, itos, load_path):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', action='store', dest='mode', default='train', type=str)
-    parser.add_argument('--model-path', action='store', dest='model_path', default='model.pth', type=str)
+    parser.add_argument('--model-path', action='store', dest='model_path', default='saved_models/model.pth', type=str)
     parser.add_argument('--temperature', action='store', dest='temp', default=1.0, type=float)
     res = parser.parse_args()
     
