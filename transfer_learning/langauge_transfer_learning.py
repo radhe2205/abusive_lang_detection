@@ -147,6 +147,10 @@ if __name__ == "__main__":
         'task':'c'
     }
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mode', action='store', dest='mode', default='test', type=str)
+    res = parser.parse_args()
+
     model = TransferLearningModel(params=params)
     
     pp = Preprocessor()
@@ -162,6 +166,11 @@ if __name__ == "__main__":
     OLID_test_tweets, OLID_test_labels = pp.get_test_data(train_options['test_tweet_path'],
                                                             train_options['test_label_path'])
     
-    model.train_model(OLID_train_tweets, OLID_train_labels, OLID_val_tweets, OLID_val_labels)
-    results, _ = model.test_model(OLID_test_tweets, OLID_test_labels)
-    print(results)
+    
+    if res.mode == 'train':
+        model.train_model(OLID_train_tweets, OLID_train_labels, OLID_val_tweets, OLID_val_labels)
+        results, _ = model.test_model(OLID_test_tweets, OLID_test_labels)
+        print(results)
+    if res.mode == 'test':
+        results, _ = model.test_model(OLID_test_tweets, OLID_test_labels)
+        print(results)       

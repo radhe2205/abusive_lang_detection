@@ -157,6 +157,10 @@ if __name__ == "__main__":
         'epochs':100,
         'task':'c'
     }
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--mode', action='store', dest='mode', default='test', type=str)
+    res = parser.parse_args()
     
     data = pd.read_csv(train_options['train_data_path'], sep='\t')
     data = data[data['tweet'].notna()]
@@ -181,7 +185,12 @@ if __name__ == "__main__":
                                                         stratify=train_y,
                                                         random_state=0)
     
-    model = CatLSTMModel(params=params)
-    model.train_model(train_x,train_y,val_x,val_y)
-    results, preds = model.test_model(test_x,test_y)
-    print(results)
+    if res.mode == 'train':
+        model = CatLSTMModel(params=params)
+        model.train_model(train_x,train_y,val_x,val_y)
+        results, preds = model.test_model(test_x,test_y)
+        print(results)
+    if res.mode == 'test':
+        model = CatLSTMModel(params=params)
+        results, preds = model.test_model(test_x,test_y)
+        print(results)       
