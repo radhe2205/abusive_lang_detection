@@ -23,6 +23,8 @@ from src.tweet_dataset import TweetDataset
 from src.utils import change_path_to_absolute, save_model, load_model
 from collections import Counter
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 def get_dataloader(tweets, labels, wordtoidx, batch_size):
     dataset = TweetDataset(tweets, labels, wordtoidx).cuda()
     return DataLoader(dataset = dataset, shuffle=False, batch_size = batch_size)
@@ -67,10 +69,11 @@ def early_stop(f1_scores, latency):
 def train(dataloader, model, loss_fn, optimizer):
     size = len(dataloader.dataset)
     model.train()
-    for batch, (x,y,w_len) in enumerate(dataloader):
-        pred = model(x.cuda(), w_len.cuda()).cuda()
+    for batch, (x,y) in enumerate(dataloader):
+        x, y = x.to(device), y.to(device)
+        pred = model(x).to(device)
         pred = pred.squeeze()
-        loss = loss_fn(pred,y.cuda())
+        loss = loss_fn(pred,y)
 
         optimizer.zero_grad()
         loss.backward()
@@ -81,16 +84,17 @@ def validation(dataloader, model, loss_fn, f1_scores):
     num_batches = len(dataloader)
     model.eval()
     test_loss, correct = 0,0
-    preds = torch.zeros(0).cuda()
-    targets = torch.zeros(0).cuda()
+    preds = torch.zeros(0).to(device)
+    targets = torch.zeros(0).to(device)
     with torch.no_grad():
-        for x,y,w_len in dataloader:
-            pred = model(x.cuda(), w_len.cuda()).cuda()
+        for x,y in dataloader:
+            x, y = x.to(device), y.to(device)
+            pred = model(x).to(device)
             pred = pred.squeeze()
-            test_loss += loss_fn(pred,y.cuda()).item()
-            correct += (torch.round(pred)==y.cuda()).type(torch.float).sum().item()
+            test_loss += loss_fn(pred,y).item()
+            correct += (torch.round(pred)==y).type(torch.float).sum().item()
             preds = torch.cat((preds,torch.round(pred)), dim=0)
-            targets = torch.cat((targets,y.cuda()), dim=0)
+            targets = torch.cat((targets,y), dim=0)
 
     test_loss /= num_batches
     correct /= size
@@ -107,11 +111,12 @@ def test(dataloader, model):
     targets = torch.zeros(0).cuda()
     with torch.no_grad():
         for x,y,w_len in dataloader:
-            pred = model(x.cuda(), w_len.cuda()).cuda()
+            x, y = x.to(device), y.to(device)
+            pred = model(x).to(device)
             pred = pred.squeeze()
-            correct += (torch.round(pred)==y.cuda()).type(torch.float).sum().item()
+            correct += (torch.round(pred)==y).type(torch.float).sum().item()
             preds = torch.cat((preds,torch.round(pred)), dim=0)
-            targets = torch.cat((targets,y.cuda()), dim=0)
+            targets = torch.cat((targets,y), dim=0)
 
     correct /= size
 
@@ -168,7 +173,7 @@ def test_model(params,test_x,test_y):
                                   in_dim=params["embedding_dim"],
                                   num_layers=params['num_layers'],
                                   hidden_size=params['hidden_size'], 
-                                  out_dim=1).cuda()
+                                  out_dim=1).to(device)
     load_model(model, params['model_path'])
 
     test_loader = get_dataloader(tweets=test_x,
