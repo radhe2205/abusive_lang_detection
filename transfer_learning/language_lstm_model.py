@@ -18,6 +18,8 @@ import string
 from torch.distributions import Categorical
 from preprocessing import Preprocessor
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 class LanguageLSTM(nn.Module):
     def __init__(self, in_dim, out_dim, hidden_size, num_layers, d=300):
         super(LanguageLSTM, self).__init__()
@@ -83,7 +85,7 @@ def gen_output(model, out_len, start_sample, temperature, itos):
         index = dist.sample()
         word = itos[index.item()]
         s += ' ' + word
-        index = torch.tensor([index.item()]).cuda()
+        index = torch.tensor([index.item()]).to(device)
     
     print(s)
 
@@ -92,7 +94,7 @@ def train_model(training_set, temp, save_path):
     num_layers = 2
     lr = 0.001
 
-    model = LanguageLSTM(in_dim=num_words, out_dim=num_words, hidden_size=hidden_size, num_layers=num_layers).cuda()
+    model = LanguageLSTM(in_dim=num_words, out_dim=num_words, hidden_size=hidden_size, num_layers=num_layers).to(device)
     torch.nn.utils.clip_grad_norm_(model.parameters(), 1)
        
     loss_fn = nn.CrossEntropyLoss()
@@ -123,7 +125,7 @@ def test_model(training_set, temp, itos, load_path):
     hidden_size = 256
     num_layers = 2
 
-    model = LanguageLSTM(in_dim=num_words, out_dim=num_words, hidden_size=hidden_size, num_layers=num_layers).cuda()
+    model = LanguageLSTM(in_dim=num_words, out_dim=num_words, hidden_size=hidden_size, num_layers=num_layers).to(device)
     model.load_state_dict(torch.load(load_path))
 
     idx = np.random.randint(len(training_set)-1)
@@ -150,7 +152,7 @@ if __name__ == "__main__":
     itos['<pad>'] = len(itos)
     stoi = {s:i for i,s in enumerate(sorted(set(text)))}
 
-    training_set = torch.Tensor([stoi[x] for x in text]).type(torch.LongTensor).cuda()
+    training_set = torch.Tensor([stoi[x] for x in text]).type(torch.LongTensor).to(device)
     num_words = len(itos)
 
     if res.mode == 'train':

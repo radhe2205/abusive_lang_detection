@@ -20,6 +20,8 @@ from model import Model
 from sklearn.model_selection import train_test_split
 from collections import Counter
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 class CatTransferLSTM(nn.Module):
     def __init__(self, embeddings, in_dim, num_layers = 1, hidden_size = 100, out_dim = 1):
         super(CatTransferLSTM, self).__init__()
@@ -32,9 +34,8 @@ class CatTransferLSTM(nn.Module):
         self.rnn = nn.LSTM(input_size=in_dim, hidden_size=hidden_size, num_layers=num_layers, batch_first=True, bidirectional=True, dropout=0.5)
         self.lstm = nn.LSTM(input_size=hidden_size*2, hidden_size=32, num_layers=1, batch_first=True, bidirectional=True)
         self.linear_layers_new = nn.Sequential(
-            nn.BatchNorm1d(32 * 2),
-            nn.Linear(32 * 2, self.out_dim),
-            nn.Sigmoid()
+            nn.Linear(32 * 2, self.out_dim)
+            [nn.Sigmoid(), nn.Identity()][self.out_dim >= 2]
         )
 
         # Weight Initialization
@@ -56,7 +57,7 @@ class CatLSTMTransferModel(Model):
         self.params = params
 
     def get_dataloader(self,tweets, labels, wordtoidx, batch_size):
-        dataset = TweetDataset(tweets, labels, wordtoidx).cuda()
+        dataset = TweetDataset(tweets, labels, wordtoidx).to(device)
         return DataLoader(dataset = dataset, shuffle=False, batch_size = batch_size)
 
     def get_all_words_from_train(self,tweets):
@@ -78,7 +79,7 @@ class CatLSTMTransferModel(Model):
                                 in_dim=self.params['embedding_dim'],
                                 num_layers=self.params['num_layers'],
                                 hidden_size=self.params['hidden_size'], 
-                                out_dim=self.params['out_dim']).cuda()
+                                out_dim=self.params['out_dim']).to(device)
 
         self.load_model(model, self.params['model_pretrain_path'], flag=False)
 
@@ -126,11 +127,11 @@ class CatLSTMTransferModel(Model):
                                                             embedding_path=self.params['embedding_path'], 
                                                             embedding_dim=self.params['embedding_dim'])
 
-        model = CatLSTM(embeddings=embedding, 
-                         in_dim=self.params['embedding_dim'],
-                         num_layers=self.params['num_layers'],
-                         hidden_size=self.params['hidden_size'], 
-                         out_dim=self.params['out_dim']).cuda()
+        model = CatTransferLSTM(embeddings=embedding, 
+                                in_dim=self.params['embedding_dim'],
+                                num_layers=self.params['num_layers'],
+                                hidden_size=self.params['hidden_size'], 
+                                out_dim=self.params['out_dim']).to(device)
 
         self.load_model(model, self.params['model_path'])
 
@@ -145,31 +146,31 @@ class CatLSTMTransferModel(Model):
 if __name__ == "__main__":
     train_options = {
         "train_data_path": "data/OLIDv1.0/olid-training-v1.0_clean.tsv",
-        "test_tweet_path": "data/OLIDv1.0/testset-levela_clean.tsv",
-        "test_label_path": "data/OLIDv1.0/labels-levela.csv",
+        "test_tweet_path": "data/OLIDv1.0/testset-levelc_clean.tsv",
+        "test_label_path": "data/OLIDv1.0/labels-levelc.csv",
         "sample_size":1,
         "seed":1
     }   
     params = {
         'model_pretrain_path':'model_cat.pth',
-        'model_path':'model_cat_a.pth',
+        'model_path':'model_cat_c.pth',
         'vocab_path':'model_vocab_cat.json',
         'embedding_path':'data/glove822/glove.6B.300d.txt',
         'embedding_dim':300,
         'num_layers':2,
         'hidden_size':256,
         'batch_size':32,
-        'lr':0.01,
+        'lr':0.001,
         'epochs':100,
-        'task':'a',
-        'out_dim':1
+        'task':'c',
+        'out_dim':3
     }
     
     model = CatLSTMTransferModel(params=params)
 
     pp = Preprocessor()
     OLID_train_tweets, OLID_train_labels = pp.get_train_data(train_options["train_data_path"], 
-                                                             task='subtask_a',
+                                                             task='subtask_c',
                                                                 sample=train_options['sample_size'],
                                                                 seed=train_options['seed'])
     OLID_train_tweets, OLID_val_tweets, OLID_train_labels, OLID_val_labels = train_test_split(OLID_train_tweets,

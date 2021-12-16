@@ -20,6 +20,8 @@ from tri_learning.models.model import Model
 from sklearn.model_selection import train_test_split
 from collections import Counter
 
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 class CatLSTM(nn.Module):
     def __init__(self, embeddings, in_dim, num_layers = 1, hidden_size = 100, out_dim = 1):
         super(CatLSTM, self).__init__()
@@ -54,7 +56,7 @@ class CatLSTMModel(Model):
         self.params = params
 
     def get_dataloader(self,tweets, labels, wordtoidx, batch_size):
-        dataset = TweetDataset(tweets, labels, wordtoidx).cuda()
+        dataset = TweetDataset(tweets, labels, wordtoidx).to(device)
         return DataLoader(dataset = dataset, shuffle=False, batch_size = batch_size)
 
     def get_all_words_from_train(self,tweets):
@@ -79,7 +81,7 @@ class CatLSTMModel(Model):
                          in_dim=self.params['embedding_dim'],
                          num_layers=self.params['num_layers'],
                          hidden_size=self.params['hidden_size'], 
-                         out_dim=self.params['out_dim']).cuda()
+                         out_dim=self.params['out_dim']).to(device)
 
         train_loader = self.get_dataloader(tweets=train_x,
                                            labels=train_y, 
@@ -123,7 +125,7 @@ class CatLSTMModel(Model):
                          in_dim=self.params['embedding_dim'],
                          num_layers=self.params['num_layers'],
                          hidden_size=self.params['hidden_size'], 
-                         out_dim=self.params['out_dim']).cuda()
+                         out_dim=self.params['out_dim']).to(device)
 
         self.load_model(model, self.params['model_path'])
 
@@ -158,7 +160,6 @@ if __name__ == "__main__":
     
     data = pd.read_csv(train_options['train_data_path'], sep='\t')
     data = data[data['tweet'].notna()]
-    print(data.head())
     tweets = data['tweet'].values
     labels = data[['subtask_a', 'subtask_b', 'subtask_c']]
     labels.loc[labels['subtask_b'].isna(), 'subtask_b'] = 'NONE'
@@ -167,10 +168,7 @@ if __name__ == "__main__":
     labels = [tuple(l) for l in labels]
     label_keys = {l:i for i,l in enumerate(sorted(set(labels)))}
     labels = np.array([label_keys[l] for l in labels])
-    print(Counter(labels))
     params['out_dim'] = len(label_keys)
-    print(labels)
-    print(tweets)
     train_x, val_x, train_y, val_y = train_test_split(tweets,
                                                       labels,
                                                       test_size=0.1,
