@@ -1,24 +1,22 @@
 import torch
 from torch import nn
 
-class AttentionModel(nn.Module):
-    def __init__(self, embeddings, in_dim, num_layers = 1, hidden_size = 100, out_dim = 1, use_word_dropout = False):
-        super(AttentionModel, self).__init__()
-        self.num_layers = num_layers
+class AttentionExp(nn.Module):
+    def __init__(self, embeddings, in_dim, hidden_size = 100, out_dim = 1, use_word_dropout = False, model_type = "attn"):
+        super(AttentionExp, self).__init__()
         self.hidden_size = hidden_size
         self.out_dim = out_dim
         self.use_word_dropout = use_word_dropout
 
         self.embeddings = embeddings
 
-        self.rnn = nn.LSTM(input_size=in_dim, hidden_size=hidden_size, num_layers=num_layers, batch_first=True, bidirectional=True, dropout=0.5)
+        self.model_type = model_type # stacked_lstm | attn | attn_cat
 
-        # self.attn_param = AttentionParam(self.hidden_size * 2, self.hidden_size)
-        # self.attn_param = AttentionParam(embeddings.fixed_embedding.weight.shape[-1], self.hidden_size)
+        self.rnn = nn.LSTM(input_size=in_dim, hidden_size=hidden_size, batch_first=True, bidirectional=True)
 
         self.multi_attn = nn.MultiheadAttention(embed_dim=self.hidden_size * 2, num_heads=4, dropout=0.5) # Batch First = False
 
-        self.rnn2 = nn.LSTM(input_size = self.hidden_size * 2, hidden_size=hidden_size, num_layers = 1, batch_first=True, bidirectional=True, dropout=0.5)
+        self.rnn2 = nn.LSTM(input_size = self.hidden_size * (4 if model_type == "attn_cat" else 2), hidden_size=hidden_size, num_layers = 1, batch_first=True, bidirectional=True)
 
         self.word_dropout = nn.Dropout(0.1)
 
@@ -60,13 +58,19 @@ class AttentionModel(nn.Module):
 
         word_embs = self.embeddings.get_embeddings(samples)
         o, (h,c) = self.rnn(word_embs)
-        # q,k,v = self.attn_param(o)
-        o = o.transpose(0,1)
-        o, o_weights= self.multi_attn(o,o,o)
-        o = o.transpose(0,1)
-        # o = o.reshape(o.shape[1], o.shape[0], -1)
+
+        if self.model_type in ("attn", "attn_cat"):
+            attn_inp = o.transpose(0,1) # attention is not batch first
+            attn_out, o_weights= self.multi_attn(attn_inp,attn_inp,attn_inp)
+            attn_out = attn_out.transpose(0,1)
+
+            if self.model_type == "attn_cat":
+                o = torch.cat((attn_out, o), dim=-1)
+            else:
+                o = attn_out
+
         o, (h,c) = self.rnn2(o)
-        # o = o[:,-1,:]
+
         o = torch.cat((o[:,-1,:self.hidden_size], o[:, 0, self.hidden_size:]), dim=-1)
         return self.linear_layers(o)
 

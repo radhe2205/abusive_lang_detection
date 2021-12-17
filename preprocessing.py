@@ -224,6 +224,12 @@ class Preprocessor:
                 text = text.replace(word, contractions[word])
         return text
 
+    def add_space_around_punc(self, text):
+        pat = re.compile(r"([\[()!?.,:;&@#*$%><^\"\'+=/\\\-\]])")
+        # text = re.sub('[()!?.,:;&@#*$%^+=-]', ' ', text)
+        text = pat.sub(' \\1 ', text)
+        return text
+
     def remove_punc(self, text):
         text = re.sub('[\{\}()!?.,:;&@#*$%^+=-]', ' ', text)
         text = re.sub('\[.*?\]', ' ', text)
@@ -284,12 +290,12 @@ class Preprocessor:
                    no_ascii=True,
                    sep_latin=True,
                    handle_apostrophe=True,
-                   no_punc=True,
-                   no_numbers=True,
-                   no_stop_words=True,
+                   no_punc=False,
+                   no_numbers=False,
+                   no_stop_words=False,
                    reduce_all_words=True,
-                   fix_spelling=True,
-                   stem_all_words=True):
+                   fix_spelling=False,
+                   stem_all_words=False):
 
         def clean(text):
             if no_users_url:
@@ -318,6 +324,8 @@ class Preprocessor:
                 text = self.spell_correction(text=text, sym_spell=sym_spell)
             if stem_all_words:
                 text = self.stem_words(text=text, lemmatizer=lemmatizer)
+
+            text = self.add_space_around_punc(text)
             
             text = text.split()
             text = [w for w in text if w != '']

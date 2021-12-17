@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import traceback
 
 from abc import ABC, abstractmethod
 import numpy as np
@@ -17,9 +18,7 @@ class Model(ABC):
 
         self.train_acc = []
         self.val_acc = []
-
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
+    
     def reset_losses(self):
         self.train_loss = []
         self.val_loss = []
@@ -74,20 +73,12 @@ class Model(ABC):
         model.train()
         train_loss, train_correct = 0,0
         for batch, (x,y) in enumerate(dataloader):
-            if self.params['task'] == 'c':
-                x, y = x.to(self.device), y.to(self.device)
-            else:
-                x, y = x.to(self.device), y.float().to(self.device)
-            pred = model(x).to(self.device)
+            x, y = x, y.float()
+            pred = model(x).cpu()
             loss = loss_fn(pred,y)
-            
-            train_loss += loss.item()
 
-            if len(pred.shape) == 1:
-                train_correct += (torch.round(pred)==y).float().sum().item()
-            else:
-                m = torch.nn.Softmax(dim=0)
-                train_correct += (y==m(pred).argmax(dim = -1)).float().sum().item()
+            train_loss += loss.item()
+            train_correct += (torch.round(pred)==y).float().sum().item()
 
             optimizer.zero_grad()
             loss.backward()
@@ -103,26 +94,16 @@ class Model(ABC):
         num_batches = len(dataloader)
         model.eval()
         test_loss, correct = 0,0
-        preds = torch.zeros(0).to(self.device)
-        targets = torch.zeros(0).to(self.device)
+        preds = torch.zeros(0).cpu()
+        targets = torch.zeros(0).cpu()
         with torch.no_grad():
             for x,y in dataloader:
-                if self.params['task'] == 'c':
-                    x, y = x.to(self.device), y.to(self.device)
-                else:
-                    x, y = x.to(self.device), y.float().to(self.device)
-                pred = model(x).to(self.device)
+                x, y = x.cpu(), y.float().cpu()
+                pred = model(x).cpu()
                 test_loss += loss_fn(pred,y).item()
-
-                if len(pred.shape) == 1:
-                    correct += (torch.round(pred)==y).type(torch.float).sum().item()
-                    preds = torch.cat((preds,torch.round(pred)), dim=0)
-                    targets = torch.cat((targets,y), dim=0)
-                else:
-                    m = torch.nn.Softmax(dim=0)
-                    correct += (y==m(pred).argmax(dim = -1)).float().sum().item()
-                    preds = torch.cat((preds,m(pred).argmax(dim = -1)), dim=0)
-                    targets = torch.cat((targets,y), dim=0)                    
+                correct += (torch.round(pred)==y).type(torch.float).sum().item()
+                preds = torch.cat((preds,torch.round(pred)), dim=0)
+                targets = torch.cat((targets,y), dim=0)
 
         test_loss /= num_batches
         correct /= size
@@ -144,25 +125,15 @@ class Model(ABC):
         num_batches = len(dataloader)
         model.eval()
         test_loss, correct = 0,0
-        preds = torch.zeros(0).to(self.device)
-        targets = torch.zeros(0).to(self.device)
+        preds = torch.zeros(0).cpu()
+        targets = torch.zeros(0).cpu()
         with torch.no_grad():
             for x,y in dataloader:
-                if self.params['task'] == 'c':
-                    x, y = x.to(self.device), y.to(self.device)
-                else:
-                    x, y = x.to(self.device), y.float().to(self.device)
-                pred = model(x).to(self.device)
-
-                if len(pred.shape) == 1:
-                    correct += (torch.round(pred)==y).type(torch.float).sum().item()
-                    preds = torch.cat((preds,torch.round(pred)), dim=0)
-                    targets = torch.cat((targets,y), dim=0)
-                else:
-                    m = torch.nn.Softmax(dim=0)
-                    correct += (y==m(pred).argmax(dim = -1)).float().sum().item()
-                    preds = torch.cat((preds,m(pred).argmax(dim = -1)), dim=0)
-                    targets = torch.cat((targets,y), dim=0)   
+                x, y = x.cpu(), y.float().cpu()
+                pred = model(x).cpu()
+                correct += (torch.round(pred)==y).type(torch.float).sum().item()
+                preds = torch.cat((preds,torch.round(pred)), dim=0)
+                targets = torch.cat((targets,y), dim=0)
 
         correct /= size
 
@@ -177,4 +148,3 @@ class Model(ABC):
     @abstractmethod
     def test_model(self,experiment,test_x,test_y):
         pass
-    

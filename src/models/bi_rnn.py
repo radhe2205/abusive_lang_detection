@@ -1,39 +1,17 @@
 import torch
 from torch import nn
 
-# model_arch = {
-#     "RNN_layers": [
-#     {"layer_type": "lstm", "in_dim": 50, "hidden_dim": 100, "bi_dir": True, "dropout": 0.5, "num_layers": 2}],
-#
-#     "Classification_Layers": [
-#         {"layer_type": "dropout", "val": 0.4},
-#         {"layer_type":"batch_norm1", "in_dim": 100},
-#         {"layer_type": "linear", "in_dim": 100, "out_dim": 1, "activation": "sigmoid"},
-#     ]
-# }
-# def get_lstm_layer(config):
-#     seq_layer = nn.LSTM
-#     if (config["layer_type"] == "lstm"):
-#         seq_layer = nn.LSTM
-#     elif (config["layer_type"] == "gru"):
-#         seq_layer = nn.GRU
-#
-#     return seq_layer(input_size=config["in_dim"], hidden_size = "hidden_dim", bidirectional=config["bi_dir"], dropout=config["dropout"])
-#
-# def get_linear_layer(config):
-#     fc = nn.Linear()
-#
-# def create_nn_layers(config):
-#
-
 class RNNModel(nn.Module):
-    def __init__(self, embeddings, in_dim, num_layers = 1, hidden_size = 100, out_dim = 1):
+    def __init__(self, embeddings, in_dim, num_layers = 1, hidden_size = 100, out_dim = 1, use_word_dropout = False):
         super(RNNModel, self).__init__()
         self.num_layers = num_layers
         self.hidden_size = hidden_size
         self.out_dim = out_dim
+        self.use_word_dropout = use_word_dropout
 
         self.embeddings = embeddings
+
+        self.word_dropout = nn.Dropout(0.1)
 
         self.rnn = nn.LSTM(input_size=in_dim, hidden_size=hidden_size, num_layers=num_layers, batch_first=True, bidirectional=True, dropout=0.5)
 
@@ -51,6 +29,13 @@ class RNNModel(nn.Module):
 
     # number of words in tweet are limited, will use padded fixed length sequence.
     def forward(self, samples):
+        if self.use_word_dropout:
+            padding_idxes = samples == -1
+            drp_inp = torch.ones(samples.shape).to(samples.device)
+            drp_idxes = self.word_dropout(drp_inp) == 0
+            samples[drp_idxes] = self.embeddings.unk_idx
+            samples[padding_idxes] = -1
+
         word_embs = self.embeddings.get_embeddings(samples)
         o, (h,c) = self.rnn(word_embs)
         # o = o[:,-1,:]

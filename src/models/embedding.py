@@ -15,7 +15,7 @@ class WordEmbedding(nn.Module):
     def get_embeddings_w_words(self, words):
         return None
 
-    def get_embeddings(self, idxes, w_lens):
+    def get_embeddings(self, idxes):
         return None
 
 class GloveEmbedding(WordEmbedding):
@@ -26,6 +26,7 @@ class GloveEmbedding(WordEmbedding):
         self.wordtoidx = wordtoidx if wordtoidx is not None else {}
 
         self.fixed_embedding = nn.Embedding(400002, embedding_dim, padding_idx=-1).requires_grad_(False)
+        self.unk_idx = 400000
 
         # One index to be used for padding
         if len(wordtoidx) > 400001:

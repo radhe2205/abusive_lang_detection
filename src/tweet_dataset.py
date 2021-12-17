@@ -9,7 +9,7 @@ class TweetDataset(nn.Module):
     # The word_to_idx is of the word2vec
     def __init__(self, tweets, labels, wordtoidx):
         super(TweetDataset, self).__init__()
-        self.max_len = 70
+        self.max_len = 90
         label_idx = {label: i for i, label in enumerate(sorted(set(labels)))}
         self.tweets = torch.empty((len(tweets), self.max_len)).long().fill_(-1)
         self.labels = torch.zeros(len(tweets))

@@ -12,7 +12,7 @@ def clean_all_files():
 
     for file in files:
         data = pd.read_csv(file, sep='\t')
-        new_path = ".".join(file.split(".")[:-1]) + "_clean1." + file.split(".")[-1]
+        new_path = ".".join(file.split(".")[:-1]) + "_clean3." + file.split(".")[-1]
         save_cleaned_tweets(data, new_path)
         print(f"Cleaned: {file}")
 
