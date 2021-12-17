@@ -3,7 +3,19 @@ import pandas as pd
 
 def save_cleaned_tweets(data, path):
     pp = Preprocessor()
-    cleaned_data = pp.clean_data(data)
+    cleaned_data = pp.clean_data(data, no_users_url=True,
+                   no_html_entities=True,
+                   no_hastags=True,
+                   all_lowercase=True,
+                   no_ascii=True,
+                   sep_latin=True,
+                   handle_apostrophe=True,
+                   no_punc=False,
+                   no_numbers=False,
+                   no_stop_words=False,
+                   reduce_all_words=True,
+                   fix_spelling=False,
+                   stem_all_words=False)
     cleaned_data.to_csv(path, sep = "\t")
 
 def clean_all_files():
