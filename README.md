@@ -99,9 +99,11 @@ If using the `train` flag you will need to specify either `grid` or `diverse`, t
 When running this with the `diverse` flag for testing or training, be aware that `model_1` is the grid searched lstm, `model_2` is the character level lstm and `model_3` is the logistic regression model.
 
 
-## Attention Model
-To Train model checkout "train_nn.py" file.
+## Attention Model & Paper implementation.
 
+To run the experiments with attention and paper implementations, run the train_nn.py file.
+
+NOTE: Comment out one of the last two lines in the train_nn.py file to run the corresponding experiment.
 NOTE: Run the train_nn.py file from the root directory.
 ```
 python3 src/train_nn.py
