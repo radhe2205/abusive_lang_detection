@@ -4,6 +4,8 @@ Detecting abusive language within tweets using the [OLID](https://sites.google.c
 - Rowan Lavelle | <rowan.lavelle@gmail.com>
 - Radheshyam Verma | <radhe2205@gmail.com>
 
+A paper with results, methods, and model details can be found within `tweet_classification_dl.pdf`.
+
 # Requirements
 
 Make sure you are using python3.6 (highest version of python tensorflow works with). Create a virtual environment by running:
@@ -31,7 +33,9 @@ sh download_embeddings.sh
 ```
 
 # Running Code
-You should be in the root directory of the github when running folders.
+You should be in the root directory of the github when running files. 
+
+Firstly you should make a directory called `saved_models/`, this is where the majority of the training files save their models. Download the OLID and SOLID datasets the links in the README header and clean them using `src/preprocess_all_data.py` by just running the file. Finally for SOLID the tweets will need to be collected using the `tweet_collection.py` file. 
 
 ## Preprocessing
 All data preprocessed using script preprocess_all_data.py
